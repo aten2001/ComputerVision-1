@@ -15,6 +15,7 @@ def blend(a, b, alpha):
     """
     return alpha * a + (1. - alpha) * b
 
+
 dolphin = cv2.imread("../images/dolphin.png")
 bicycle = cv2.imread("../images/bicycle.png")
 

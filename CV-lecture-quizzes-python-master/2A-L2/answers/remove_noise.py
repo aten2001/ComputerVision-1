@@ -24,8 +24,8 @@ noisy_img = img + noise
 imshow('Noisy Image', noisy_img)  # Customized imshow function to match the quiz
 
 # Create a Gaussian filter
-filter_size = 11
-filter_sigma = 2
+filter_size = 20
+filter_sigma = 20
 
 # OpenCV does not have a fspecial type of function. Instead we will cv2.getGaussianKernel
 # to generate a Gaussian kernel.

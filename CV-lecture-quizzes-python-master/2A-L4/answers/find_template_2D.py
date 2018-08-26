@@ -21,6 +21,11 @@ cv2.imshow('Glyph', glyph)
 tablet_2 = 1. * tablet - np.mean(tablet)
 glyph_2 = 1. * glyph - np.mean(glyph)
 
+
+cv2.imshow('Tablet 2', tablet_2)
+cv2.imshow('Glyph 2', glyph_2)
+
+
 y, x = find_template_2D(glyph_2, tablet_2)
 print "Y: {}, X: {}".format(y, x)
 

@@ -1,0 +1,16 @@
+version: '2.4'
+
+services:
+  default:
+    image: cv_all_image:latest
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - DISPLAY
+    volumes:
+      - /Users/james/Code/ComputerVision/ps00:/home/pset
+      - /Users/james/Code/ComputerVision/assignments:/home/assignments
+    user: 1000:1000 #change $UID:$GID depending on host
+  shell:
+    image: cv_all_image:latest
+    working_dir: /home/pset
+    command: bash
