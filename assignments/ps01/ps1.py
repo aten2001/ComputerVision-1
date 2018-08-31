@@ -91,7 +91,23 @@ def copy_paste_middle(src, dst, shape):
     Returns:
         numpy.array: Output monochrome image (2D array)
     """
-    raise NotImplementedError
+
+    source_x = int(math.floor((src.shape[0] - shape[0]) / 2))  # the x cord mid point in src
+    source_y = int(math.floor((src.shape[1] - shape[1]) / 2))  # the y cord mid in the src.
+    dest_x = int(math.floor((dst.shape[0] - shape[0]) / 2))
+    dest_y = int(math.floor((dst.shape[1] - shape[1]) / 2))
+
+    # calculate the end points which is hte mid point + the size of the shape now.
+    source_end_x = source_x + shape[0]
+    source_end_y = source_y + shape[1]
+    dest_end_x = dest_x + shape[0]
+    dest_end_y = dest_y + shape[0]
+
+    temp_image = np.copy(dst)
+
+    temp_image[dest_x: dest_end_x, dest_y: dest_end_y] = src[source_x: source_end_x, source_y: source_end_y]
+
+    return temp_image
 
 
 def image_stats(image):
@@ -113,7 +129,7 @@ def image_stats(image):
                mean (float): Input array mean / average value.
                stddev (float): Input array standard deviation.
     """
-    raise NotImplementedError
+    return 1.*np.min(image), 1.*np.max(image), 1.*np.mean(image), 1.*np.std(image)
 
 
 def center_and_normalize(image, scale):
@@ -135,7 +151,11 @@ def center_and_normalize(image, scale):
     Returns:
         numpy.array: Output 2D image.
     """
-    raise NotImplementedError
+    i_min, i_max, i_mean, i_std = image_stats(image)
+    # take the mean from the image, then divide by the std deviation. We then scale by the
+    # scale factor and then add the mean back into the image.
+    normal_image = (((image-i_mean) / i_std) * scale) + i_mean
+    return normal_image
 
 
 def shift_image_left(image, shift):
@@ -160,7 +180,10 @@ def shift_image_left(image, shift):
     Returns:
         numpy.array: Output shifted 2D image.
     """
-    raise NotImplementedError
+    temp_image = np.copy(image)
+    # take the temp image, all rows, from column defined in shift to end, move shift using border replicate.
+    return cv2.copyMakeBorder(temp_image[:, shift:], 0, 0, 0, shift, cv2.BORDER_REPLICATE)
+
 
 
 def difference_image(img1, img2):
@@ -178,7 +201,10 @@ def difference_image(img1, img2):
     Returns:
         numpy.array: Output 2D image containing the result of subtracting img2 from img1.
     """
-    raise NotImplementedError
+    difference = img1.astype(np.float) - img2.astype(np.float)
+    output_image = np.zeros(difference.shape)
+    cv2.normalize(difference, output_image, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX)
+    return output_image
 
 
 def add_noise(image, channel, sigma):
@@ -206,4 +232,9 @@ def add_noise(image, channel, sigma):
         numpy.array: Output 3D array containing the result of adding Gaussian noise to the
             specified channel.
     """
-    raise NotImplementedError
+    # generate random noise using the image.shape tuple as the dimensions.
+    gaussian_noise = np.random.randn(*image.shape) * sigma
+    temp_image = np.copy(image)
+    temp_image *= 1.0  # make it a float
+    temp_image[:, :, channel] += gaussian_noise[:, :, channel]
+    return temp_image
