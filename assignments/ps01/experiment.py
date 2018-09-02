@@ -7,8 +7,8 @@ from ps1 import *
 def main():
 
     # TODO: Insert your image file paths here:
-    img1_filename = None
-    img2_filename = None
+    img1_filename = 'image1.png'
+    img2_filename = 'image2.png'
 
     # # 1a
     img1 = cv2.imread(img1_filename)
@@ -45,7 +45,7 @@ def main():
     # # 3a
 
     # TODO: Choose the monochrome image for img1.
-    mono1 = None
+    mono1 = img1_green
 
     mono2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
 
@@ -78,7 +78,7 @@ def main():
     # # 5 Noise
 
     # TODO: Choose a sigma value:
-    sigma = None
+    sigma = 90
 
     # # 5a
     channel = 1
@@ -89,6 +89,20 @@ def main():
     channel = 0
     noisy_blue = add_noise(img1, channel, sigma)
     cv2.imwrite('output/ps1-5-b-1.png', noisy_blue)
+
+
+    # south africa flag face inspection.
+    south_africa = cv2.imread('southafricaflagface.png')
+    sa_r = extract_red(south_africa)
+    sa_b = extract_blue(south_africa)
+    sa_g = extract_green(south_africa)
+    # save them for use.
+    cv2.imwrite('output/sa_r.png', sa_r)
+    cv2.imwrite('output/sa_b.png', sa_b)
+    cv2.imwrite('output/sa_g.png', sa_g)
+    gray_image = cv2.cvtColor(south_africa, cv2.COLOR_BGR2GRAY)
+    cv2.imwrite('output/sa_gray.png', gray_image)
+
 
 
 if __name__ == "__main__":

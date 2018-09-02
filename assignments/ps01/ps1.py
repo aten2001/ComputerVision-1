@@ -91,23 +91,39 @@ def copy_paste_middle(src, dst, shape):
     Returns:
         numpy.array: Output monochrome image (2D array)
     """
+    src = np.copy(src)
+    dst = np.copy(dst)
 
-    source_x = int(math.floor((src.shape[0] - shape[0]) / 2))  # the x cord mid point in src
-    source_y = int(math.floor((src.shape[1] - shape[1]) / 2))  # the y cord mid in the src.
-    dest_x = int(math.floor((dst.shape[0] - shape[0]) / 2))
-    dest_y = int(math.floor((dst.shape[1] - shape[1]) / 2))
+    # height is rows, width is columns
+    src_rows, src_cols = src.shape
+    dst_rows, dst_cols = dst.shape
 
-    # calculate the end points which is hte mid point + the size of the shape now.
-    source_end_x = source_x + shape[0]
-    source_end_y = source_y + shape[1]
-    dest_end_x = dest_x + shape[0]
-    dest_end_y = dest_y + shape[0]
+    # shape size mid points.
+    shape_mid_rows = int(np.floor(shape[0] / 2))
+    shape_mid_cols = int(np.floor(shape[1] / 2))
 
-    temp_image = np.copy(dst)
+    # mid point of the "copy" image
+    copy_mid_row = int(np.floor(src_rows / 2))
+    copy_mid_col = int(np.floor(src_cols / 2))
 
-    temp_image[dest_x: dest_end_x, dest_y: dest_end_y] = src[source_x: source_end_x, source_y: source_end_y]
+    # mid points of the paste image.
+    paste_mid_row = int(np.floor(dst_rows / 2))
+    paste_mid_col = int(np.floor(dst_cols / 2))
 
-    return temp_image
+    # calculate the shifts to make sure copy is correct.
+    r1_dst, r2_dst, c1_dst, c2_dst, r1_src, r2_src, c1_src, c2_src = [
+        paste_mid_row - shape_mid_rows,
+        paste_mid_row + shape_mid_rows,
+        paste_mid_col - shape_mid_cols,
+        paste_mid_col + shape_mid_cols,
+        copy_mid_row - shape_mid_rows,
+        copy_mid_row + shape_mid_rows,
+        copy_mid_col - shape_mid_cols,
+        copy_mid_col + shape_mid_cols
+    ]
+
+    dst[r1_dst: r2_dst, c1_dst: c2_dst] = src[r1_src: r2_src, c1_src: c2_src]
+    return dst
 
 
 def image_stats(image):
@@ -204,6 +220,8 @@ def difference_image(img1, img2):
     difference = img1.astype(np.float) - img2.astype(np.float)
     output_image = np.zeros(difference.shape)
     cv2.normalize(difference, output_image, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX)
+    # print("Max Value is ", max(output_image.flatten()))
+    # print("Min Value is ", min(output_image.flatten()))
     return output_image
 
 
@@ -235,6 +253,6 @@ def add_noise(image, channel, sigma):
     # generate random noise using the image.shape tuple as the dimensions.
     gaussian_noise = np.random.randn(*image.shape) * sigma
     temp_image = np.copy(image)
-    temp_image *= 1.0  # make it a float
+    temp_image = (temp_image * 1.0)  # make it a float
     temp_image[:, :, channel] += gaussian_noise[:, :, channel]
     return temp_image
