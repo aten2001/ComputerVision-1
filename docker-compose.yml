@@ -14,3 +14,9 @@ services:
     image: cv_all_image:latest
     working_dir: /home/pset
     command: bash
+  python-homework:
+    image: cv_all_image:latest
+    volumes:
+      - /Users/james/Code/ComputerVision/assignments:/home/pset
+    working_dir: /home/pset
+    command: bash

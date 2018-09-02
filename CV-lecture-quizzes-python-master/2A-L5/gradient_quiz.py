@@ -11,8 +11,10 @@ def normalize(img_in):
 # Gradient Direction
 def select_gdir(gmag, gdir, mag_min, angle_low, angle_high):
     # TODO: Find and return pixels that fall within the desired mag, angle range
-
-    pass
+    result = gmag >= mag_min
+    result &= gdir >= angle_low
+    result &= gdir <= angle_high
+    return result.astype(np.float)
 
 # Load and convert image to double type, range [0, 1] for convenience
 img = cv2.imread('images/octagon.png', 0) / 255.
