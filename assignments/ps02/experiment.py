@@ -38,7 +38,13 @@ def draw_tl_center(image_in, center, state):
         traffic light center and text that presents the numerical
         coordinates with the traffic light state.
     """
-    raise NotImplementedError
+    img = image_in.copy()
+    # draw the midpoint.
+    cv2.circle(img, (center[0], center[1]), 4, (0, 0, 0), -3)
+    # add the state
+    disp_str = '(({}, {} ), {} )'.format(center[0], center[1], state)
+    cv2.putText(img, disp_str, (100, 100), cv2.FONT_HERSHEY_PLAIN, 1, (0, 0, 0), 2)
+    return img
 
 
 def mark_traffic_signs(image_in, signs_dict):
@@ -79,6 +85,58 @@ def part_1():
 
         tl = cv2.imread("input_images/{}.png".format(img_in))
         coords, state = ps2.traffic_light_detection(tl, radii_range)
+
+        img_out = draw_tl_center(tl, coords, state)
+        cv2.imwrite("output/{}.png".format(label), img_out)
+
+
+def part_1_tests():
+    input_images = ['simple_tl_test',
+                    'tl_green_299_287_blank',
+                    'tl_red_199_137_blank',
+                    'tl_yellow_199_237_blank'
+                    ]
+    output_labels = ['simple_tl_out',
+                     'tl_green_299_287_out',
+                     'tl_red_199_137_out',
+                     'tl_yellow_199_237_out'
+                     ]
+
+    # Define a radii range, you may define a smaller range based on your
+    # observations.
+    radii_range = range(10, 30, 1)
+
+    for img_in, label in zip(input_images, output_labels):
+        tl = cv2.imread("input_images/test_images/{}.png".format(img_in))
+        coords, state = ps2.traffic_light_detection(tl, radii_range)
+
+        print 'Cords for image name: {}.png are {} , state is: {}'.format(img_in, coords, state)
+
+        img_out = draw_tl_center(tl, coords, state)
+        cv2.imwrite("output/{}.png".format(label), img_out)
+
+
+def part_1_scenes_test():
+    input_images = ['scene_tl_test',
+                    'tl_green_299_287_background',
+                    'tl_red_199_137_background',
+                    'tl_yellow_199_237_background',
+                    ]
+    output_labels = ['scene_tl_out',
+                     'tl_green_299_287_background_out',
+                     'tl_red_199_137_background_out',
+                     'tl_yellow_199_237_background_out'
+                     ]
+
+    # Define a radii range, you may define a smaller range based on your
+    # observations.
+    radii_range = range(10, 30, 1)
+
+    for img_in, label in zip(input_images, output_labels):
+        tl = cv2.imread("input_images/test_images/{}.png".format(img_in))
+        coords, state = ps2.traffic_light_detection(tl, radii_range)
+
+        print 'Cords for image name: {}.png are {} , state is: {}'.format(img_in, coords, state)
 
         img_out = draw_tl_center(tl, coords, state)
         cv2.imwrite("output/{}.png".format(label), img_out)
@@ -158,10 +216,14 @@ def part_5b():
         img_out = mark_traffic_signs(scene, coords)
         cv2.imwrite("output/{}.png".format(label), img_out)
 
+
 if __name__ == '__main__':
-    part_1()
-    part_2()
-    part_3()
-    part_4()
-    part_5a()
-    part_5b()
+    # part_1()
+    # part_1_tests()
+    part_1_scenes_test()
+    # part_2()
+    # part_3()
+    # part_4()
+    # part_5a()
+    # part_5b()
+
