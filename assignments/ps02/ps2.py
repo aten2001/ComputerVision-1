@@ -21,7 +21,7 @@ def process_base_image(img, kernel_size, show_image=False):
     """
     processed_image = img.copy()
     processed_image = cv2.cvtColor(processed_image, cv2.COLOR_BGR2GRAY)
-    processed_image = cv2.GaussianBlur(processed_image, kernel_size, 1)
+    processed_image = cv2.GaussianBlur(processed_image, kernel_size, 0)
     if show_image:
         cv2.imshow('Gray Scale Image', processed_image)
         cv2.waitKey(0)
@@ -191,6 +191,7 @@ def do_not_enter_sign_detection(img_in):
     Returns:
         (x,y) tuple of the coordinates of the center of the sign.
     """
+    img_in = img_in.copy()
     img = process_base_image(img_in, (7, 7))
     # Assumption made that a DNE sign will always have at least a
     # radius of 5.
