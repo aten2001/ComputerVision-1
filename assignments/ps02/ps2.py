@@ -84,22 +84,24 @@ def traffic_light_detection(img_in, radii_range):
     circles = np.uint16(np.around(circles))
 
     # If there are more than 3 circles found, eliminate the outliers.
-    # if len(circles > 3):
-    #     median_x = np.median(circles[:, 0])
-    #     min_x = median_x - 5
-    #     max_x = median_x + 5
-    #     circles = circles[circles[:, 0] > min_x, :]
-    #     circles = circles[circles[:, 0] < max_x, :]
+    if len(circles) > 3:
+        median_x = np.median(circles[:, 0])
+        min_x = median_x - 5
+        max_x = median_x + 5
+        circles = circles[circles[:, 0] > min_x, :]
+        circles = circles[circles[:, 0] < max_x, :]
 
     # sort the circles from top down to allow color compare.
     circles = circles[np.argsort(circles[:, 1])]  # sort by Y direction.
-
-    red_row = circles[0][1]
-    red_col = circles[0][0]
-    yellow_row = circles[1][1]
-    yellow_col = circles[1][0]
-    green_row = circles[2][1]
-    green_col = circles[2][0]
+    # creating some names for clarity due to x, y being col, row.
+    red_row, red_col, yellow_row, yellow_col, green_row, green_col = {
+        circles[0][1],
+        circles[0][0],
+        circles[1][1],
+        circles[1][0],
+        circles[2][1],
+        circles[2][0]
+    }
 
     # determine colors.
     state = 'yellow'  # default state.
@@ -107,11 +109,6 @@ def traffic_light_detection(img_in, radii_range):
 
     red_color = np.array([0, 0, 255])
     green_color = np.array([0, 255, 0])
-
-    # print 'Colors found for each circle '
-    # print'Red Circle: {} '.format(img_in[red_col, red_row])
-    # print'Yellow Circle: {} '.format(img_in[yellow_col, yellow_row])
-    # print'Green Circle: {} '.format(img_in[green_row, green_col])
 
     if (img_in[red_row, red_col] == red_color).all():
         state = 'red'

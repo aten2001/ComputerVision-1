@@ -220,7 +220,7 @@ def part_5b():
 if __name__ == '__main__':
     # part_1()
     # part_1_tests()
-    part_1_scenes_test()
+    # part_1_scenes_test()
     # part_2()
     # part_3()
     # part_4()
