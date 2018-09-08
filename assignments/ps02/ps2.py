@@ -2,12 +2,12 @@
 CS6476 Problem Set 2 imports. Only Numpy and cv2 are allowed.
 """
 import cv2
-
 import numpy as np
 
 
 def process_base_image(img, kernel_size, show_image=False):
-    """ Will take a given input image and convert the image to
+    """
+    Will take a given input image and convert the image to
     gray scale as well apply a Gaussian Blur.
 
     Args:
@@ -19,7 +19,6 @@ def process_base_image(img, kernel_size, show_image=False):
         processed_image (numpy.array): image that has a Gaussian Blur applied
                                        and has been converted to gray scale.
     """
-
     processed_image = img.copy()
     processed_image = cv2.cvtColor(processed_image, cv2.COLOR_BGR2GRAY)
     processed_image = cv2.GaussianBlur(processed_image, kernel_size, 1)
@@ -27,12 +26,31 @@ def process_base_image(img, kernel_size, show_image=False):
         cv2.imshow('Gray Scale Image', processed_image)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
-
     return processed_image
 
 
+def hough_circles(img, dp, min_dist, p1, p2, min_rad, max_rad):
+    return cv2.HoughCircles(
+        image=img,
+        method=cv2.cv.CV_HOUGH_GRADIENT,
+        # method=cv2.HOUGH_GRADIENT,
+        dp=dp,
+        minDist=min_dist*2,
+        param1=p1,
+        param2=p2,
+        minRadius=min_rad,
+        maxRadius=max_rad
+    )
+
+
+def pixel_color(img, x, y):
+    return img[y, x]
+
+
 def traffic_light_detection(img_in, radii_range):
-    """Finds the coordinates of a traffic light image given a radii
+    """
+
+    Finds the coordinates of a traffic light image given a radii
     range.
 
     Use the radii range to find the circles in the traffic light and
@@ -60,24 +78,14 @@ def traffic_light_detection(img_in, radii_range):
         state (str): traffic light state. A value in {'red', 'yellow',
                      'green'}
     """
+
     img = process_base_image(img_in, (7, 7))
 
     # find all the circles in an image using Hough Circles
     min_radii = min(radii_range)
     max_radii = max(radii_range)
 
-    circles = cv2.HoughCircles(
-        image=img,
-        method=cv2.cv.CV_HOUGH_GRADIENT,
-        # method=cv2.HOUGH_GRADIENT,
-        dp=1.15,
-        minDist=min_radii*2,
-        param1=30,
-        param2=15,
-        minRadius=min_radii,
-        maxRadius=max_radii
-    )
-
+    circles = hough_circles(img, 1.15, min_radii, 30, 15, min_radii, max_radii)
     # cleanup circles so its easier to use.
     circles = circles[0, :]
     # round the numbers of the array to uint16 values.
@@ -94,14 +102,15 @@ def traffic_light_detection(img_in, radii_range):
     # sort the circles from top down to allow color compare.
     circles = circles[np.argsort(circles[:, 1])]  # sort by Y direction.
     # creating some names for clarity due to x, y being col, row.
-    red_row, red_col, yellow_row, yellow_col, green_row, green_col = {
+
+    red_row, red_col, yellow_row, yellow_col, green_row, green_col = [
         circles[0][1],
         circles[0][0],
         circles[1][1],
         circles[1][0],
         circles[2][1],
-        circles[2][0]
-    }
+        circles[2][0],
+    ]
 
     # determine colors.
     state = 'yellow'  # default state.
@@ -116,7 +125,6 @@ def traffic_light_detection(img_in, radii_range):
         state = 'green'
 
     return cords, state
-
 
 
 def yield_sign_detection(img_in):
@@ -171,6 +179,8 @@ def construction_sign_detection(img_in):
     raise NotImplementedError
 
 
+
+
 def do_not_enter_sign_detection(img_in):
     """Find the centroid coordinates of a do not enter sign in the
     provided image.
@@ -179,9 +189,27 @@ def do_not_enter_sign_detection(img_in):
         img_in (numpy.array): image containing a traffic light.
 
     Returns:
-        (x,y) typle of the coordinates of the center of the sign.
+        (x,y) tuple of the coordinates of the center of the sign.
     """
-    raise NotImplementedError
+    img = process_base_image(img_in, (7, 7))
+    # Assumption made that a DNE sign will always have at least a
+    # radius of 5.
+    min_radius = 5
+    max_radius = img.shape[1]
+
+    circles = hough_circles(img, 1, min_radius, 30, 30, min_radius, max_radius)
+    circles = np.uint16(np.around(circles))
+
+    if circles is not None:
+        circles = circles[0, :]
+        # since multiple circles might be found, the correct one
+        circle_mid_colors = [pixel_color(img, x[0], x[1]) for x in circles]
+        valid_idx = circle_mid_colors.index(255)
+        the_sign = circles[valid_idx]
+
+    output = (the_sign[0], the_sign[1])
+    return output
+
 
 
 def traffic_sign_detection(img_in):
@@ -267,3 +295,5 @@ def traffic_sign_detection_challenge(img_in):
               valid scene.
     """
     raise NotImplementedError
+
+

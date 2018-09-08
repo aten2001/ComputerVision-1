@@ -69,7 +69,16 @@ def mark_traffic_signs(image_in, signs_dict):
         numpy.array: output image showing markers on each traffic
         sign.
     """
-    raise NotImplementedError
+    img = image_in.copy()
+
+    # loop over the dictionary, add all KVP as lables and mid points.
+    for key, value in signs_dict.iteritems():
+        cv2.circle(img, value, 4, (0, 0, 0), -3)
+        # place the text below the midpoint value
+        key_offset = value[0] - (len(key) / 2)
+        cv2.putText(img, key, (key_offset, value[1] + 20), cv2.FONT_HERSHEY_PLAIN, 1, (0, 0, 0), 2)
+
+    return img
 
 
 def part_1():
@@ -90,71 +99,23 @@ def part_1():
         cv2.imwrite("output/{}.png".format(label), img_out)
 
 
-def part_1_tests():
-    input_images = ['simple_tl_test',
-                    'tl_green_299_287_blank',
-                    'tl_red_199_137_blank',
-                    'tl_yellow_199_237_blank'
-                    ]
-    output_labels = ['simple_tl_out',
-                     'tl_green_299_287_out',
-                     'tl_red_199_137_out',
-                     'tl_yellow_199_237_out'
-                     ]
-
-    # Define a radii range, you may define a smaller range based on your
-    # observations.
-    radii_range = range(10, 30, 1)
-
-    for img_in, label in zip(input_images, output_labels):
-        tl = cv2.imread("input_images/test_images/{}.png".format(img_in))
-        coords, state = ps2.traffic_light_detection(tl, radii_range)
-
-        print 'Cords for image name: {}.png are {} , state is: {}'.format(img_in, coords, state)
-
-        img_out = draw_tl_center(tl, coords, state)
-        cv2.imwrite("output/{}.png".format(label), img_out)
-
-
-def part_1_scenes_test():
-    input_images = ['scene_tl_test',
-                    'tl_green_299_287_background',
-                    'tl_red_199_137_background',
-                    'tl_yellow_199_237_background',
-                    ]
-    output_labels = ['scene_tl_out',
-                     'tl_green_299_287_background_out',
-                     'tl_red_199_137_background_out',
-                     'tl_yellow_199_237_background_out'
-                     ]
-
-    # Define a radii range, you may define a smaller range based on your
-    # observations.
-    radii_range = range(10, 30, 1)
-
-    for img_in, label in zip(input_images, output_labels):
-        tl = cv2.imread("input_images/test_images/{}.png".format(img_in))
-        coords, state = ps2.traffic_light_detection(tl, radii_range)
-
-        print 'Cords for image name: {}.png are {} , state is: {}'.format(img_in, coords, state)
-
-        img_out = draw_tl_center(tl, coords, state)
-        cv2.imwrite("output/{}.png".format(label), img_out)
-
 
 def part_2():
 
-    input_images = ['scene_dne_1', 'scene_stp_1', 'scene_constr_1',
-                    'scene_wrng_1', 'scene_yld_1']
+    input_images = ['scene_dne_1']
+                    # 'scene_stp_1', 'scene_constr_1',
+                    # 'scene_wrng_1', 'scene_yld_1']
 
-    output_labels = ['ps2-2-a-1', 'ps2-2-a-2', 'ps2-2-a-3', 'ps2-2-a-4',
-                     'ps2-2-a-5']
+    output_labels = ['ps2-2-a-1']
+    # 'ps2-2-a-2', 'ps2-2-a-3', 'ps2-2-a-4',
+    #                  'ps2-2-a-5']
 
-    sign_fns = [ps2.do_not_enter_sign_detection, ps2.stop_sign_detection,
-                ps2.construction_sign_detection, ps2.warning_sign_detection,
-                ps2.yield_sign_detection]
+    sign_fns = [ps2.do_not_enter_sign_detection]
+        # , ps2.stop_sign_detection,
+        #         ps2.construction_sign_detection, ps2.warning_sign_detection,
+        #         ps2.yield_sign_detection]
 
-    sign_labels = ['no_entry', 'stop', 'construction', 'warning', 'yield']
+    sign_labels = ['no_entry'] # 'stop', 'construction', 'warning', 'yield']
 
     for img_in, label, fn, name in zip(input_images, output_labels, sign_fns,
                                        sign_labels):
@@ -218,10 +179,8 @@ def part_5b():
 
 
 if __name__ == '__main__':
-    # part_1()
-    # part_1_tests()
-    # part_1_scenes_test()
-    # part_2()
+    part_1()
+    part_2()
     # part_3()
     # part_4()
     # part_5a()
