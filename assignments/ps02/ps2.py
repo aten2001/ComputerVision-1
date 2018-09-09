@@ -32,8 +32,8 @@ def process_base_image(img, kernel_size, show_image=False):
 def hough_circles(img, dp, min_dist, p1, p2, min_rad, max_rad):
     return cv2.HoughCircles(
         image=img,
-        method=cv2.cv.CV_HOUGH_GRADIENT,
-        # method=cv2.HOUGH_GRADIENT,
+        # method=cv2.cv.CV_HOUGH_GRADIENT,
+        method=cv2.HOUGH_GRADIENT,
         dp=dp,
         minDist=min_dist*2,
         param1=p1,
@@ -153,6 +153,10 @@ def yield_sign_detection(img_in):
     raise NotImplementedError
 
 
+
+
+
+
 def stop_sign_detection(img_in):
     """Finds the centroid coordinates of a stop sign in the provided
     image.
@@ -163,6 +167,84 @@ def stop_sign_detection(img_in):
     Returns:
         (x,y) tuple of the coordinates of the center of the stop sign.
     """
+
+    img = img_in.copy()
+
+    red_color_map = img[:, :, 2]
+
+    cv2.imshow('Red color map', red_color_map)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+    canny_edges = cv2.Canny(red_color_map, threshold1=120, threshold2=90, apertureSize=5)
+    cv2.imshow('Canny Map', canny_edges)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+    # since stop signs are octogons, we want to use an internal angle of 135.
+    theta = 45
+    minLineLength = 25
+    maxPixelGap = 10
+    hLines = cv2.HoughLinesP(image=canny_edges,
+                             rho=5,
+                             theta=np.pi/180*theta,
+                             threshold=20,
+                             minLineLength=minLineLength,
+                             maxLineGap=maxPixelGap
+                             )
+
+    # to capture the top and bottom of the stop sign,
+    vl1 = hLines[:, 0, 1]
+    vl2 = hLines[:, 0, 3]
+    all_vl = np.concatenate([vl1, vl2])
+    top_y_cord = max(all_vl)
+    bot_y_cord = min(all_vl)
+    # to capture right side / left side.
+    hl1 = hLines[:, 0, 0]
+    hl2 = hLines[:, 0, 2]
+    all_hl = np.concatenate([hl1, hl2])
+    left_x_cord = min(all_hl)
+    right_x_cord = max(all_hl)
+
+    print 'Max cords of sign are as follows'
+    print 'Highest Y: {}'.format(top_y_cord)
+    print 'Lowest Y: {}'.format(bot_y_cord)
+    print 'Left X: {}'.format(left_x_cord)
+    print 'Right X: {}'.format(right_x_cord)
+
+    # remove lines that aren't bounding lines.
+    hLines = hLines[ hlines[0,0],:,]
+
+
+    # loop over lines and place them on a new image to test.
+    imgc = img.copy()
+    for l in hLines:
+        v = l[0]
+        y_cords = (v[1], v[3])
+        x_cords = (v[0], v[2])
+
+        # Only care about "bounding lines" these are lines within a threshold of
+
+        valid_line = True
+        print 'line x1: {}, y1:{} , x2: {} , y2: {} '.format(x_cords[0], y_cords[0], x_cords[1], y_cords[1])
+        x_diff = x_cords[1] - x_cords[0]
+
+        if x_diff > 0:
+            y_diff = v[3] - v[1]
+            slope = np.floor(y_diff / x_diff)
+            print 'Slope: {}'.format(slope)
+            # do not print the line if its not within 10 of the top / bottom pixels.
+            if slope == 0 and :
+                valid_line = False
+                print 'Ignoring a line'
+        if valid_line:
+            cv2.line(imgc, (v[0], v[1]), (v[2], v[3]), (255, 122, 122), 5)
+
+    cv2.imshow('Hough Lines Map', imgc)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+
     raise NotImplementedError
 
 
