@@ -47,6 +47,111 @@ def pixel_color(img, x, y):
     return img[y, x]
 
 
+def calculate_line_length(x1, y1, x2, y2):
+    """ Calculates the length of a line given two points
+
+    Args:
+        x1: x cord of start point
+        y1: y cord of start point
+        x2: x cord of end point
+        y2: y cord of end point.
+
+    Returns:
+        Integer representing the length of the line.
+
+    """
+    distance = np.sqrt((x2 - x1)**2 + (y2 - y1)**2)
+    return distance
+
+
+def calculate_slope(x1, y1, x2, y2):
+    return abs((y2 - y1) / (x2 - x1))
+
+
+def remove_duplicates(lines, dist=5):
+    lines = lines.tolist()
+    for idx, (x1, y1, x2, y2) in enumerate(lines):
+        for idx2, (x3, y3, x4, y4) in enumerate(lines):
+            if idx != idx2 and y1-dist <= y3 <= y1+dist and y2-dist <= y4 <= y2+dist and x1-dist <= x3 <= x1+dist and \
+                    x2-dist <= x4 <= x2+dist:
+                del lines[idx2]
+
+    return np.array(lines)
+
+
+def clean_edge_lines(lines, min_x, max_x, min_y, max_y):
+    # to clean up the lines we only want ones that are within a certain threshold of being at the edges.
+    # the lines should have a x1 or x2 within 3 of min_x and max_x
+    # should have a y1 or y2 within 3 of min_y and max_y
+    valid_lines = []
+    # print 'total lines: {}'.format(lines.shape)
+    for l in lines:
+        left_diff = np.abs(l[0]-min_x)
+        right_diff = np.abs(l[2] - max_x)
+        yt1 = np.abs(l[1]-max_y)
+        yt2 = np.abs(l[3]-max_y)
+        yb1 = np.abs(l[1]-min_y)
+        yb2 = np.abs(l[3]-min_y)
+        if (yt1 < 5 and yt2 < 5) or (yb1 < 5 and yb2 < 5):
+            valid_lines.append(l)
+        elif left_diff < 5 or right_diff < 5:
+            valid_lines.append(l)
+    # remove duplicate lines once we removed ones that are not on the border.
+    valid_lines = remove_duplicates(valid_lines)
+    valid_lines = np.array(valid_lines)
+    return valid_lines
+
+
+def calculate_min_max_values(lines):
+    vl1 = lines[:, 1]
+    vl2 = lines[:, 3]
+    all_vl = np.concatenate([vl1, vl2])
+    max_y = max(all_vl)
+    min_y = min(all_vl)
+    # to capture right side / left side.
+    hl1 = lines[:, 0]
+    hl2 = lines[:, 2]
+    all_hl = np.concatenate([hl1, hl2])
+    min_x = min(all_hl)
+    max_x = max(all_hl)
+    return min_x, max_x, min_y, max_y
+
+
+def red_masking(img):
+    hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    # lower mask
+    lower_red = np.array([0, 50, 50])
+    upper_red = np.array([10, 255, 255])
+    red_mask = cv2.inRange(hsv_img, lower_red, upper_red)
+    return red_mask
+
+
+def yellow_masking(img):
+    hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    # values for the mask were obtained from Stack Overflow which lead to this blog
+    # http://aishack.in/tutorials/tracking-colored-objects-opencv/
+    lower_yellow = np.array([20, 100, 100])
+    upper_yellow = np.array([30, 255, 255])
+    yellow_mask = cv2.inRange(hsv_img, lower_yellow, upper_yellow)
+    return yellow_mask
+
+
+def orange_masking(img):
+    hsv_image = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    # values for range were found by taking unique values of HSV'
+    # print np.unique(hsv_image.reshape(-1, hsv_image.shape[2]), axis=0)
+    # [[  0   0   0]
+    # [  0   0 128]
+    # [ 15 255 255] <- this is the color we want.
+    # [ 30 255 255] <- this is the yellow suns, ignore
+    # [ 60 255 204]
+    # [105 153 255]]
+    lower_orange = np.array([0, 255, 255])
+    upper_orange = np.array([25, 255, 255])
+    orange_mask = cv2.inRange(hsv_image, lower_orange, upper_orange)
+    return orange_mask
+
+
 def traffic_light_detection(img_in, radii_range):
     """
 
@@ -91,13 +196,44 @@ def traffic_light_detection(img_in, radii_range):
     # round the numbers of the array to uint16 values.
     circles = np.uint16(np.around(circles))
 
+    if circles is None:
+        print 'No Hough Circles Found in Traffic Lights'
+        return (0, 0), None
+    # else:
+    #     cimg = img.copy()
+    #     for i in circles:
+    #         # draw the outer circle
+    #         cv2.circle(cimg,(i[0],i[1]),i[2],(0,255,0),2)
+    #         # draw the center of the circle
+    #         cv2.circle(cimg,(i[0],i[1]),2,(0,0,255),3)
+    #     cv2.imshow('Traffic Circles Image', cimg)
+    #     cv2.waitKey(0)
+    #     cv2.destroyAllWindows()
+
+
     # If there are more than 3 circles found, eliminate the outliers.
     if len(circles) > 3:
+        print 'Removing Junks'
+        counts = np.bincount(circles[:, 0])
+        mode_x = np.argmax(counts)
         median_x = np.median(circles[:, 0])
+        if median_x > mode_x:
+            median_x = mode_x
+
         min_x = median_x - 5
         max_x = median_x + 5
         circles = circles[circles[:, 0] > min_x, :]
         circles = circles[circles[:, 0] < max_x, :]
+
+    # cimg = img.copy()
+    # for i in circles:
+    #     # draw the outer circle
+    #     cv2.circle(cimg, (i[0], i[1]), i[2], (0, 255, 0), 2)
+    #     # draw the center of the circle
+    #     cv2.circle(cimg, (i[0], i[1]), 2, (0, 0, 255), 3)
+    # cv2.imshow('Traffic Circles Image CLean 1', cimg)
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
 
     # if there are still more than 3 circles, that means there is a circle directly above
     # or below the actual traffic light. Need to group them into possible sets of 3. First sort by the
@@ -105,12 +241,33 @@ def traffic_light_detection(img_in, radii_range):
     # lights of interest will be the ones that are closest to each other.
     if len(circles) > 3:
         sorted_circles = circles[np.lexsort((circles[:, 2], circles[:, 0], circles[:, 1]))]
+
+        radius_counts = np.bincount(circles[:, 2])
+        mode_r = np.argmax(radius_counts)
+        # remove ones with radius too large.
+        sorted_circles = sorted_circles[abs(sorted_circles[:, 2]-mode_r) < 4, :]
+
         t_circles = np.int16(sorted_circles)
         y_diffs = np.abs(np.diff(t_circles[:, 1]))
+
         small_diff_idx = y_diffs.argsort()[:2] # get the 2 smallest index values.
         # if the smallest diff index is 0, get 0,1,2. if not, get smallest index + 2 rows.
         smallest_idx = min(small_diff_idx)
         circles = sorted_circles[smallest_idx: smallest_idx+3, :]
+
+    # cimg = img.copy()
+    # for i in circles:
+    #     # draw the outer circle
+    #     cv2.circle(cimg, (i[0], i[1]), i[2], (0, 255, 0), 2)
+    #     # draw the center of the circle
+    #     cv2.circle(cimg, (i[0], i[1]), 2, (0, 0, 255), 3)
+    # cv2.imshow('Traffic Circles Image CLean 2', cimg)
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
+
+
+    # if len(circles) < 3:
+    #     return (0, 0), None
 
     # sort the circles from top down to allow color compare.
     circles = circles[np.argsort(circles[:, 1])]  # sort by Y direction.
@@ -137,6 +294,7 @@ def traffic_light_detection(img_in, radii_range):
     elif (img_in[green_row, green_col] == green_color).all():
         state = 'green'
 
+    print 'Traffic Light found at: {} and it is: {}'.format(cords, state)
     return cords, state
 
 
@@ -150,94 +308,55 @@ def yield_sign_detection(img_in):
     Returns:
         (x,y) tuple of coordinates of the center of the yield sign.
     """
-    raise NotImplementedError
+    img = img_in.copy()
+    red_color_map = red_masking(img)
+    red_color_map = cv2.dilate(red_color_map, np.ones((5, 5)))
+    canny_edges = cv2.Canny(red_color_map, threshold1=50, threshold2=250, apertureSize=5)
+    #
+    # cv2.imshow('Canny Map', canny_edges)
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
 
 
-def calculate_line_length(x1, y1, x2, y2):
-    """ Calculates the length of a line given two points
+    min_line_length = 20
+    max_pixel_gap = 5
+    hough_lines = cv2.HoughLinesP(image=canny_edges,
+                                  rho=0.5,
+                                  theta=np.pi / 180,
+                                  threshold=20,
+                                  minLineLength=min_line_length,
+                                  maxLineGap=max_pixel_gap
+                                  )
 
-    Args:
-        x1: x cord of start point
-        y1: y cord of start point
-        x2: x cord of end point
-        y2: y cord of end point.
+    hough_lines = hough_lines[0, :]
 
-    Returns:
-        Integer representing the length of the line.
+    # print hough_lines
 
-    """
-    distance = np.sqrt((x2 - x1)**2 + (y2 - y1)**2)
-    return distance
+    lines = remove_duplicates(hough_lines, dist= 10)
+    #print lines
 
-
-def calculate_slope(x1, y1, x2, y2):
-    return abs((y2 - y1) / (x2 - x1))
-
-
-def remove_duplicates(lines):
-    lines = lines.tolist()
-    for idx, (x1, y1, x2, y2) in enumerate(lines):
-        for idx2, (x3, y3, x4, y4) in enumerate(lines):
-            if idx != idx2 and y1-5 <= y3 <= y1+5 and y2-5 <= y4 <= y2+5 and x1-5 <= x3 <= x1+5 and x2-5 <= x4 <= x2+5:
-                del lines[idx2]
-
-    return np.array(lines)
+    # imgc = img.copy()
+    # for line in lines:
+    #     cv2.line(imgc, (line[0], line[1]), (line[2], line[3]), (255, 122, 122), 2)
+    # cv2.imshow('Hough Lines Map', imgc)
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
 
 
-def clean_edge_lines(lines, min_x, max_x, min_y, max_y):
-    # to clean up the lines we only want ones that are within a certain threshold of being at the edges.
-    # the lines should have a x1 or x2 within 3 of min_x and max_x
-    # should have a y1 or y2 within 3 of min_y and max_y
-    valid_lines = []
-    # print 'total lines: {}'.format(lines.shape)
-    for l in lines:
-        left_diff = np.abs(l[0]-min_x)
-        right_diff = np.abs(l[2] - max_x)
-        yt1 = np.abs(l[1]-max_y)
-        yt2 = np.abs(l[3]-max_y)
-        yb1 = np.abs(l[1]-min_y)
-        yb2 = np.abs(l[3]-min_y)
-        if (yt1 < 5 and yt2 < 5) or (yb1 < 5 and yb2 < 5):
-            valid_lines.append(l)
-        elif left_diff < 5 or right_diff < 5:
-            valid_lines.append(l)
-    # remove duplicate lines once we removed ones that are not on the border.
-    valid_lines = remove_duplicates(valid_lines)
-    valid_lines = np.array(valid_lines)
-    return valid_lines
+    # if lines.shape[0] != 6:  #not a sign.
+    #     return None, None
 
-def calculate_min_max_values(lines):
-    vl1 = lines[:, 1]
-    vl2 = lines[:, 3]
-    all_vl = np.concatenate([vl1, vl2])
-    max_y = max(all_vl)
-    min_y = min(all_vl)
-    # to capture right side / left side.
-    hl1 = lines[:, 0]
-    hl2 = lines[:, 2]
-    all_hl = np.concatenate([hl1, hl2])
-    min_x = min(all_hl)
-    max_x = max(all_hl)
-    return min_x, max_x, min_y, max_y
+    # determine midpoint.
+    # midpoint x will be at teh midpoint of the longest line (x2 -x1) that has the same Y values.
+    sorted_lines = lines[np.argsort(lines[:, 0])]  # sort by x1 direction.
+    for l in sorted_lines:
+        if np.abs(l[1] - l[3]) < 5: # the line is pretty straight, good enough.
+            print('The Line we use is ')
+            print l
+            mid_x = np.int((l[0] + l[2]) / 2)
+            mid_y = np.int(l[1] + ((l[2]-l[0])*np.cos(np.pi/6) - ((l[2]-l[0])/2)/np.cos(np.pi/6)))
+            return mid_x,  mid_y  # return we are done.
 
-
-def red_masking(img):
-    hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-    # lower mask
-    lower_red = np.array([0, 50, 50])
-    upper_red = np.array([10, 255, 255])
-    red_mask = cv2.inRange(hsv_img, lower_red, upper_red)
-    return red_mask
-
-
-def yellow_masking(img):
-    hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-    # values for the mask were obtained from Stack Overflow which lead to this blog
-    # http://aishack.in/tutorials/tracking-colored-objects-opencv/
-    lower_yellow = np.array([20, 100, 100])
-    upper_yellow = np.array([30, 255, 255])
-    yellow_mask = cv2.inRange(hsv_img, lower_yellow, upper_yellow)
-    return yellow_mask
 
 def stop_sign_detection(img_in):
     """Finds the centroid coordinates of a stop sign in the provided
@@ -351,7 +470,36 @@ def construction_sign_detection(img_in):
     Returns:
         (x,y) tuple of the coordinates of the center of the sign.
     """
-    raise NotImplementedError
+    img = img_in.copy()
+    orange_color_map = orange_masking(img)
+    orange_color_map = cv2.dilate(orange_color_map, np.ones((5, 5)))
+    # cv2.imshow('Orange Map', orange_color_map)
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
+    canny_edges = cv2.Canny(orange_color_map, threshold1=50, threshold2=250, apertureSize=5)
+    # cv2.imshow('Canny Map', canny_edges)
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
+    min_line_length = 20
+    max_pixel_gap = 20
+    hough_lines = cv2.HoughLinesP(image=canny_edges,
+                                  rho=0.5,
+                                  theta=np.pi/180,
+                                  threshold=20,
+                                  minLineLength=min_line_length,
+                                  maxLineGap=max_pixel_gap
+                                  )
+    hough_lines = hough_lines[0, :]
+
+    lines = remove_duplicates(hough_lines)
+    if lines.shape[1] < 4:
+        return None, None
+
+    min_x, max_x, min_y, max_y = calculate_min_max_values(lines)
+    mid_x = min_x + ((max_x - min_x) / 2)
+    mid_y = min_y + ((max_y - min_y) / 2)
+
+    return mid_x, mid_y
 
 
 def do_not_enter_sign_detection(img_in):
@@ -414,6 +562,36 @@ def traffic_sign_detection(img_in):
               These are just example values and may not represent a
               valid scene.
     """
+    img = img_in.copy()
+    dict = {} # return dictionary
+
+    cv2.imshow('Original Image', img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+    # get traffic lights if found.
+    (x, y), state = traffic_light_detection(img, (3, 30))
+    if state is not None:
+        dict['traffic_light'] = (x,y)
+
+    (x, y) = construction_sign_detection(img)
+    if x is not None:
+        dict['construction'] = (x, y)
+
+
+    red_color_map = red_masking(img)
+
+    # orange signs ( warning )
+
+    # red signs ( yield, stop )
+
+    # yellow signs (construction)
+
+    # traffic lights
+
+
+
+
     raise NotImplementedError
 
 

@@ -80,10 +80,10 @@ def mark_traffic_signs(image_in, signs_dict):
         # place the text below the midpoint value
         key_offset = value[0] - word_width / 2
 
-        print 'Img Width is: {}'.format(img.shape[1])
-        print 'key offset is: {}'.format(key_offset)
-        print 'Word with is: {}'.format(word_width)
-        print 'With words edge will be at {} '.format(key_offset + (word_width/2))
+        # print 'Img Width is: {}'.format(img.shape[1])
+        # print 'key offset is: {}'.format(key_offset)
+        # print 'Word with is: {}'.format(word_width)
+        # print 'With words edge will be at {} '.format(key_offset + (word_width/2))
         cv2.putText(img, key, (key_offset, value[1] + 20), cv2.FONT_HERSHEY_PLAIN, 1, (0, 0, 0), 2)
 
     return img
@@ -133,12 +133,12 @@ def part_1_tests():
 
 
 def part_1_scenes_test():
-    input_images = ['scene_tl_test',
+    input_images = ['scene_all_signs',
                     'tl_green_299_287_background',
                     'tl_red_199_137_background',
                     'tl_yellow_199_237_background',
                     ]
-    output_labels = ['scene_tl_out',
+    output_labels = ['sscene_all_signs_out',
                      'tl_green_299_287_background_out',
                      'tl_red_199_137_background_out',
                      'tl_yellow_199_237_background_out'
@@ -161,30 +161,30 @@ def part_2():
 
     input_images = ['scene_dne_1',
                     'scene_stp_1',
-                    # 'scene_constr_1',
+                    'scene_constr_1',
                     'scene_wrng_1',
-                    # 'scene_yld_1'
+                    'scene_yld_1'
                     ]
 
     output_labels = ['ps2-2-a-1',
                      'ps2-2-a-2',
-                     # 'ps2-2-a-3',
+                     'ps2-2-a-3',
                      'ps2-2-a-4',
-                     # 'ps2-2-a-5'
+                     'ps2-2-a-5'
                      ]
 
     sign_fns = [ps2.do_not_enter_sign_detection,
                 ps2.stop_sign_detection,
-                # ps2.construction_sign_detection,
+                ps2.construction_sign_detection,
                 ps2.warning_sign_detection,
-                # ps2.yield_sign_detection
+                ps2.yield_sign_detection
                 ]
 
     sign_labels = ['no_entry',
                    'stop',
-                   # 'construction',
-                    'warning',
-                   # 'yield'
+                   'construction',
+                   'warning',
+                   'yield'
                    ]
 
     for img_in, label, fn, name in zip(input_images, output_labels, sign_fns,
@@ -200,8 +200,10 @@ def part_2():
 
 def part_3():
 
-    input_images = ['scene_some_signs', 'scene_all_signs']
-    output_labels = ['ps2-3-a-1', 'ps2-3-a-2']
+    input_images = [ # 'scene_some_signs',
+                    'scene_all_signs']
+    output_labels = [ # 'ps2-3-a-1',
+                     'ps2-3-a-2']
 
     for img_in, label in zip(input_images, output_labels):
 
@@ -252,12 +254,12 @@ if __name__ == '__main__':
 
     # part_1()
     # part_1_tests()
-    # part_1_scenes_test()
+    part_1_scenes_test()
 
-    part_2()
-    # img_name = 'scene_stp_1'
-    # sign_img = cv2.imread("input_images/{}.png".format(img_name))
-    # ps2.stop_sign_detection(sign_img)
+    #part_2()
+    # img_name = 'yield_173_358_blank'
+    # sign_img = cv2.imread("input_images/test_images/{}.png".format(img_name))
+    # ps2.yield_sign_detection(sign_img)
 
     # part_3()
     # part_4()
