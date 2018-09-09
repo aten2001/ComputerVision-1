@@ -32,8 +32,8 @@ def process_base_image(img, kernel_size, show_image=False):
 def hough_circles(img, dp, min_dist, p1, p2, min_rad, max_rad):
     return cv2.HoughCircles(
         image=img,
-        # method=cv2.cv.CV_HOUGH_GRADIENT,
-        method=cv2.HOUGH_GRADIENT,
+        method=cv2.cv.CV_HOUGH_GRADIENT,
+        # method=cv2.HOUGH_GRADIENT,
         dp=dp,
         minDist=min_dist*2,
         param1=p1,
@@ -153,9 +153,91 @@ def yield_sign_detection(img_in):
     raise NotImplementedError
 
 
+def calculate_line_length(x1, y1, x2, y2):
+    """ Calculates the length of a line given two points
+
+    Args:
+        x1: x cord of start point
+        y1: y cord of start point
+        x2: x cord of end point
+        y2: y cord of end point.
+
+    Returns:
+        Integer representing the length of the line.
+
+    """
+    distance = np.sqrt((x2 - x1)**2 + (y2 - y1)**2)
+    return distance
 
 
+def calculate_slope(x1, y1, x2, y2):
+    return abs((y2 - y1) / (x2 - x1))
 
+
+def remove_duplicates(lines):
+    lines = lines.tolist()
+    for idx, (x1, y1, x2, y2) in enumerate(lines):
+        for idx2, (x3, y3, x4, y4) in enumerate(lines):
+            if idx != idx2 and y1-5 <= y3 <= y1+5 and y2-5 <= y4 <= y2+5 and x1-5 <= x3 <= x1+5 and x2-5 <= x4 <= x2+5:
+                del lines[idx2]
+
+    return np.array(lines)
+
+
+def clean_edge_lines(lines, min_x, max_x, min_y, max_y):
+    # to clean up the lines we only want ones that are within a certain threshold of being at the edges.
+    # the lines should have a x1 or x2 within 3 of min_x and max_x
+    # should have a y1 or y2 within 3 of min_y and max_y
+    valid_lines = []
+    # print 'total lines: {}'.format(lines.shape)
+    for l in lines:
+        left_diff = np.abs(l[0]-min_x)
+        right_diff = np.abs(l[2] - max_x)
+        yt1 = np.abs(l[1]-max_y)
+        yt2 = np.abs(l[3]-max_y)
+        yb1 = np.abs(l[1]-min_y)
+        yb2 = np.abs(l[3]-min_y)
+        if (yt1 < 5 and yt2 < 5) or (yb1 < 5 and yb2 < 5):
+            valid_lines.append(l)
+        elif left_diff < 5 or right_diff < 5:
+            valid_lines.append(l)
+    # remove duplicate lines once we removed ones that are not on the border.
+    valid_lines = remove_duplicates(valid_lines)
+    valid_lines = np.array(valid_lines)
+    return valid_lines
+
+def calculate_min_max_values(lines):
+    vl1 = lines[:, 1]
+    vl2 = lines[:, 3]
+    all_vl = np.concatenate([vl1, vl2])
+    max_y = max(all_vl)
+    min_y = min(all_vl)
+    # to capture right side / left side.
+    hl1 = lines[:, 0]
+    hl2 = lines[:, 2]
+    all_hl = np.concatenate([hl1, hl2])
+    min_x = min(all_hl)
+    max_x = max(all_hl)
+    return min_x, max_x, min_y, max_y
+
+
+def red_masking(img):
+    hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    # lower mask
+    lower_red = np.array([0, 50, 50])
+    upper_red = np.array([10, 255, 255])
+    red_mask = cv2.inRange(hsv_img, lower_red, upper_red)
+    return red_mask
+
+
+def yellow_masking(img):
+    hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    # values for the mask were obtained from Stack Overflow which lead to this blog
+    # http://aishack.in/tutorials/tracking-colored-objects-opencv/
+    lower_yellow = np.array([20, 100, 100])
+    upper_yellow = np.array([30, 255, 255])
+    yellow_mask = cv2.inRange(hsv_img, lower_yellow, upper_yellow)
+    return yellow_mask
 
 def stop_sign_detection(img_in):
     """Finds the centroid coordinates of a stop sign in the provided
@@ -169,83 +251,48 @@ def stop_sign_detection(img_in):
     """
 
     img = img_in.copy()
+    red_color_map = red_masking(img)
+    red_color_map = cv2.dilate(red_color_map, np.ones((5, 5)))
 
-    red_color_map = img[:, :, 2]
+    canny_edges = cv2.Canny(red_color_map, threshold1=50, threshold2=250, apertureSize=5)
+    # cv2.imshow('Canny Map', canny_edges)
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
 
-    cv2.imshow('Red color map', red_color_map)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    min_line_length = 20
+    max_pixel_gap = 20
+    hough_lines = cv2.HoughLinesP(image=canny_edges,
+                                  rho=0.5,
+                                  theta=np.pi/180,
+                                  threshold=20,
+                                  minLineLength=min_line_length,
+                                  maxLineGap=max_pixel_gap
+                                  )
 
-    canny_edges = cv2.Canny(red_color_map, threshold1=120, threshold2=90, apertureSize=5)
-    cv2.imshow('Canny Map', canny_edges)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-
-    # since stop signs are octogons, we want to use an internal angle of 135.
-    theta = 45
-    minLineLength = 25
-    maxPixelGap = 10
-    hLines = cv2.HoughLinesP(image=canny_edges,
-                             rho=5,
-                             theta=np.pi/180*theta,
-                             threshold=20,
-                             minLineLength=minLineLength,
-                             maxLineGap=maxPixelGap
-                             )
+    hough_lines = hough_lines[0, :]  # cleanup dimensionality to make it easier to work with.
 
     # to capture the top and bottom of the stop sign,
-    vl1 = hLines[:, 0, 1]
-    vl2 = hLines[:, 0, 3]
-    all_vl = np.concatenate([vl1, vl2])
-    top_y_cord = max(all_vl)
-    bot_y_cord = min(all_vl)
-    # to capture right side / left side.
-    hl1 = hLines[:, 0, 0]
-    hl2 = hLines[:, 0, 2]
-    all_hl = np.concatenate([hl1, hl2])
-    left_x_cord = min(all_hl)
-    right_x_cord = max(all_hl)
+    left_x_cord, right_x_cord, bot_y_cord, top_y_cord = calculate_min_max_values(hough_lines)
+    # lines = clean_edge_lines(hough_lines, left_x_cord, right_x_cord, bot_y_cord, top_y_cord)
 
-    print 'Max cords of sign are as follows'
-    print 'Highest Y: {}'.format(top_y_cord)
-    print 'Lowest Y: {}'.format(bot_y_cord)
-    print 'Left X: {}'.format(left_x_cord)
-    print 'Right X: {}'.format(right_x_cord)
+    lines = remove_duplicates(hough_lines)
 
-    # remove lines that aren't bounding lines.
-    hLines = hLines[ hlines[0,0],:,]
+    # once given the lines of interest perform some more calculations
+    min_x, max_x, min_y, max_y = calculate_min_max_values(lines)
+    mid_x = min_x + ((max_x - min_x) / 2)
+    mid_y = min_y + ((max_y - min_y) / 2)
 
+    # print 'Mid is found at ({}, {})'.format(mid_x, mid_y)
+    #
+    # # loop over lines and place them on a new image to test.
+    # imgc = img.copy()
+    # for line in lines:
+    #     cv2.line(imgc, (line[0], line[1]), (line[2], line[3]), (255, 122, 122), 2)
+    # cv2.imshow('Hough Lines Map', imgc)
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
 
-    # loop over lines and place them on a new image to test.
-    imgc = img.copy()
-    for l in hLines:
-        v = l[0]
-        y_cords = (v[1], v[3])
-        x_cords = (v[0], v[2])
-
-        # Only care about "bounding lines" these are lines within a threshold of
-
-        valid_line = True
-        print 'line x1: {}, y1:{} , x2: {} , y2: {} '.format(x_cords[0], y_cords[0], x_cords[1], y_cords[1])
-        x_diff = x_cords[1] - x_cords[0]
-
-        if x_diff > 0:
-            y_diff = v[3] - v[1]
-            slope = np.floor(y_diff / x_diff)
-            print 'Slope: {}'.format(slope)
-            # do not print the line if its not within 10 of the top / bottom pixels.
-            if slope == 0 and :
-                valid_line = False
-                print 'Ignoring a line'
-        if valid_line:
-            cv2.line(imgc, (v[0], v[1]), (v[2], v[3]), (255, 122, 122), 5)
-
-    cv2.imshow('Hough Lines Map', imgc)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-
-
-    raise NotImplementedError
+    return mid_x, mid_y
 
 
 def warning_sign_detection(img_in):
@@ -258,7 +305,40 @@ def warning_sign_detection(img_in):
     Returns:
         (x,y) tuple of the coordinates of the center of the sign.
     """
-    raise NotImplementedError
+    img = img_in.copy()
+    yellow_color_map = yellow_masking(img)
+    yellow_color_map = cv2.dilate(yellow_color_map, np.ones((5, 5)))
+    canny_edges = cv2.Canny(yellow_color_map, threshold1=50, threshold2=250, apertureSize=5)
+    # cv2.imshow('Warning Canny', canny_edges)
+    # cv2.waitKey(0)
+    #Hough lines.
+    min_line_length = 30
+    max_pixel_gap = 75
+
+    hough_lines = cv2.HoughLinesP(image=canny_edges,
+                                  rho=0.5,
+                                  theta=np.pi/180,
+                                  threshold=30,
+                                  minLineLength=min_line_length,
+                                  maxLineGap=max_pixel_gap)
+
+    hough_lines = hough_lines[0, :]
+    lines = remove_duplicates(hough_lines)
+    if lines.shape[1] != 4: # this wasn't a diamond, return.
+        return None, None
+    min_x, max_x, min_y, max_y = calculate_min_max_values(lines)
+    mid_x = min_x + ((max_x - min_x) / 2)
+    mid_y = min_y + ((max_y - min_y) / 2)
+    return mid_x, mid_y
+
+    # # loop over lines and place them on a new image to test.
+    # imgc = img.copy()
+    # for line in hough_lines:
+    #     cv2.line(imgc, (line[0], line[1]), (line[2], line[3]), (255, 122, 122), 2)
+    # cv2.imshow('Hough Lines Map', imgc)
+    # cv2.waitKey(0)
+    #
+    # raise NotImplementedError
 
 
 def construction_sign_detection(img_in):

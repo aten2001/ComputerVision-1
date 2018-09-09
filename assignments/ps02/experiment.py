@@ -74,8 +74,16 @@ def mark_traffic_signs(image_in, signs_dict):
     # loop over the dictionary, add all KVP as lables and mid points.
     for key, value in signs_dict.iteritems():
         cv2.circle(img, value, 4, (0, 0, 0), -3)
+        # each character is about 10 pixels, shift to fit
+        word_width = 10 * len(key)
+
         # place the text below the midpoint value
-        key_offset = value[0] - (len(key) / 2)
+        key_offset = value[0] - word_width / 2
+
+        print 'Img Width is: {}'.format(img.shape[1])
+        print 'key offset is: {}'.format(key_offset)
+        print 'Word with is: {}'.format(word_width)
+        print 'With words edge will be at {} '.format(key_offset + (word_width/2))
         cv2.putText(img, key, (key_offset, value[1] + 20), cv2.FONT_HERSHEY_PLAIN, 1, (0, 0, 0), 2)
 
     return img
@@ -154,23 +162,29 @@ def part_2():
     input_images = ['scene_dne_1',
                     'scene_stp_1',
                     # 'scene_constr_1',
-                    # 'scene_wrng_1', 'scene_yld_1'
+                    'scene_wrng_1',
+                    # 'scene_yld_1'
                     ]
 
     output_labels = ['ps2-2-a-1',
                      'ps2-2-a-2',
-    # 'ps2-2-a-3', 'ps2-2-a-4',
-    #                  'ps2-2-a-5'
+                     # 'ps2-2-a-3',
+                     'ps2-2-a-4',
+                     # 'ps2-2-a-5'
                      ]
 
     sign_fns = [ps2.do_not_enter_sign_detection,
                 ps2.stop_sign_detection,
-        #         ps2.construction_sign_detection, ps2.warning_sign_detection,
-        #         ps2.yield_sign_detection
+                # ps2.construction_sign_detection,
+                ps2.warning_sign_detection,
+                # ps2.yield_sign_detection
                 ]
 
-    sign_labels = ['no_entry', 'stop',
-                   # 'construction', 'warning', 'yield'
+    sign_labels = ['no_entry',
+                   'stop',
+                   # 'construction',
+                    'warning',
+                   # 'yield'
                    ]
 
     for img_in, label, fn, name in zip(input_images, output_labels, sign_fns,
@@ -240,10 +254,10 @@ if __name__ == '__main__':
     # part_1_tests()
     # part_1_scenes_test()
 
-    # part_2()
-    img_name = 'stop_249_149_blank'
-    sign_img = cv2.imread("input_images/test_images/{}.png".format(img_name))
-    ps2.stop_sign_detection(sign_img)
+    part_2()
+    # img_name = 'scene_stp_1'
+    # sign_img = cv2.imread("input_images/{}.png".format(img_name))
+    # ps2.stop_sign_detection(sign_img)
 
     # part_3()
     # part_4()

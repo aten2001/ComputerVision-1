@@ -3,20 +3,13 @@ version: '2.4'
 services:
   default:
     image: cv_all_image:latest
+    #runtime: nvidia
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
-      - DISPLAY
+      - DISPLAY=docker.for.mac.localhost:0
     volumes:
-      - /Users/james/Code/ComputerVision/ps00:/home/pset
-      - /Users/james/Code/ComputerVision/assignments:/home/assignments
-    user: 1000:1000 #change $UID:$GID depending on host
-  shell:
-    image: cv_all_image:latest
-    working_dir: /home/pset
-    command: bash
-  python-homework:
-    image: cv_all_image:latest
-    volumes:
-      - /Users/james/Code/ComputerVision/assignments:/home/pset
-    working_dir: /home/pset
-    command: bash
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - /Users/james/Code/ComputerVision:/home/pset  # change depending on pset location
+    user: 1000:1000  # change $UID:$GID depending on host
+    working_dir: /home/pset/ps00  # change to your preferred working directory in Docker container
+    command: python ps0.py  # specify the command to run, optional for running from command line
