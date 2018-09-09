@@ -99,6 +99,19 @@ def traffic_light_detection(img_in, radii_range):
         circles = circles[circles[:, 0] > min_x, :]
         circles = circles[circles[:, 0] < max_x, :]
 
+    # if there are still more than 3 circles, that means there is a circle directly above
+    # or below the actual traffic light. Need to group them into possible sets of 3. First sort by the
+    # y Direction, then compare each row with the one below it and store the difference in Y. The three
+    # lights of interest will be the ones that are closest to each other.
+    if len(circles) > 3:
+        sorted_circles = circles[np.lexsort((circles[:, 2], circles[:, 0], circles[:, 1]))]
+        t_circles = np.int16(sorted_circles)
+        y_diffs = np.abs(np.diff(t_circles[:, 1]))
+        small_diff_idx = y_diffs.argsort()[:2] # get the 2 smallest index values.
+        # if the smallest diff index is 0, get 0,1,2. if not, get smallest index + 2 rows.
+        smallest_idx = min(small_diff_idx)
+        circles = sorted_circles[smallest_idx: smallest_idx+3, :]
+
     # sort the circles from top down to allow color compare.
     circles = circles[np.argsort(circles[:, 1])]  # sort by Y direction.
     # creating some names for clarity due to x, y being col, row.
@@ -179,8 +192,6 @@ def construction_sign_detection(img_in):
     raise NotImplementedError
 
 
-
-
 def do_not_enter_sign_detection(img_in):
     """Find the centroid coordinates of a do not enter sign in the
     provided image.
@@ -210,7 +221,6 @@ def do_not_enter_sign_detection(img_in):
 
     output = (the_sign[0], the_sign[1])
     return output
-
 
 
 def traffic_sign_detection(img_in):
