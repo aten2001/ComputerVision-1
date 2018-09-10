@@ -202,10 +202,11 @@ def part_2():
 def part_3():
 
     input_images = [
-                    'scene_some_signs',
+                    #'scene_some_signs',
                     'scene_all_signs'
                     ]
-    output_labels = ['ps2-3-a-1',
+    output_labels = [
+                    #'ps2-3-a-1',
                      'ps2-3-a-2'
                      ]
 
@@ -256,10 +257,10 @@ def part_5b():
 
 if __name__ == '__main__':
 
-    part_1()
-    part_1_tests()
-    part_1_scenes_test()
-    part_2()
+    # part_1()
+    # part_1_tests()
+    # part_1_scenes_test()
+    # part_2()
     # img_name = 'yield_173_358_blank'
     # sign_img = cv2.imread("input_images/test_images/{}.png".format(img_name))
     # ps2.yield_sign_detection(sign_img)

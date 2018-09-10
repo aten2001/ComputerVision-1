@@ -226,16 +226,16 @@ def traffic_light_detection(img_in, radii_range, other_signs=False):
     if circles is None:
         # print 'No Hough Circles Found in Traffic Lights'
         return (0, 0), None
-    # else:
-    #     cimg = img.copy()
-    #     for i in circles:
-    #         # draw the outer circle
-    #         cv2.circle(cimg,(i[0],i[1]),i[2],(0,255,0),2)
-    #         # draw the center of the circle
-    #         cv2.circle(cimg,(i[0],i[1]),2,(0,0,255),3)
-    #     cv2.imshow('Traffic Circles Image', cimg)
-    #     cv2.waitKey(0)
-    #     cv2.destroyAllWindows()
+    else:
+        cimg = img.copy()
+        for i in circles:
+            # draw the outer circle
+            cv2.circle(cimg,(i[0],i[1]),i[2],(0,255,0),2)
+            # draw the center of the circle
+            cv2.circle(cimg,(i[0],i[1]),2,(0,0,255),3)
+        cv2.imshow('Traffic Circles Image', cimg)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
 
 
     # If there are more than 3 circles found, eliminate the outliers.
@@ -252,15 +252,15 @@ def traffic_light_detection(img_in, radii_range, other_signs=False):
         circles = circles[circles[:, 0] > min_x, :]
         circles = circles[circles[:, 0] < max_x, :]
 
-    # cimg = img.copy()
-    # for i in circles:
-    #     # draw the outer circle
-    #     cv2.circle(cimg, (i[0], i[1]), i[2], (0, 255, 0), 2)
-    #     # draw the center of the circle
-    #     cv2.circle(cimg, (i[0], i[1]), 2, (0, 0, 255), 3)
-    # cv2.imshow('Traffic Circles Image CLean 1', cimg)
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
+    cimg = img.copy()
+    for i in circles:
+        # draw the outer circle
+        cv2.circle(cimg, (i[0], i[1]), i[2], (0, 255, 0), 2)
+        # draw the center of the circle
+        cv2.circle(cimg, (i[0], i[1]), 2, (0, 0, 255), 3)
+    cv2.imshow('Traffic Circles Image CLean 1', cimg)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
     # if there are still more than 3 circles, that means there is a circle directly above
     # or below the actual traffic light. Need to group them into possible sets of 3. First sort by the
@@ -290,15 +290,15 @@ def traffic_light_detection(img_in, radii_range, other_signs=False):
         # print rad_differences
 
 
-    # cimg = img.copy()
-    # for i in circles:
-    #     # draw the outer circle
-    #     cv2.circle(cimg, (i[0], i[1]), i[2], (0, 255, 0), 2)
-    #     # draw the center of the circle
-    #     cv2.circle(cimg, (i[0], i[1]), 2, (0, 0, 255), 3)
-    # cv2.imshow('Traffic Circles Image CLean 2', cimg)
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
+    cimg = img.copy()
+    for i in circles:
+        # draw the outer circle
+        cv2.circle(cimg, (i[0], i[1]), i[2], (0, 255, 0), 2)
+        # draw the center of the circle
+        cv2.circle(cimg, (i[0], i[1]), 2, (0, 0, 255), 3)
+    cv2.imshow('Traffic Circles Image CLean 2', cimg)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
 
     if len(circles) < 3:
