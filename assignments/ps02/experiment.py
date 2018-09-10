@@ -106,6 +106,7 @@ def part_1():
         img_out = draw_tl_center(tl, coords, state)
         cv2.imwrite("output/{}.png".format(label), img_out)
 
+
 def part_1_tests():
     input_images = ['simple_tl_test',
                     'tl_green_299_287_blank',
@@ -133,12 +134,12 @@ def part_1_tests():
 
 
 def part_1_scenes_test():
-    input_images = ['scene_all_signs',
+    input_images = ['scene_tl_test',
                     'tl_green_299_287_background',
                     'tl_red_199_137_background',
                     'tl_yellow_199_237_background',
                     ]
-    output_labels = ['sscene_all_signs_out',
+    output_labels = ['scene_tl_test_out',
                      'tl_green_299_287_background_out',
                      'tl_red_199_137_background_out',
                      'tl_yellow_199_237_background_out'
@@ -200,10 +201,13 @@ def part_2():
 
 def part_3():
 
-    input_images = [ # 'scene_some_signs',
-                    'scene_all_signs']
-    output_labels = [ # 'ps2-3-a-1',
-                     'ps2-3-a-2']
+    input_images = [
+                    'scene_some_signs',
+                    'scene_all_signs'
+                    ]
+    output_labels = ['ps2-3-a-1',
+                     'ps2-3-a-2'
+                     ]
 
     for img_in, label in zip(input_images, output_labels):
 
@@ -252,16 +256,14 @@ def part_5b():
 
 if __name__ == '__main__':
 
-    # part_1()
-    # part_1_tests()
+    part_1()
+    part_1_tests()
     part_1_scenes_test()
-
-    #part_2()
+    part_2()
     # img_name = 'yield_173_358_blank'
     # sign_img = cv2.imread("input_images/test_images/{}.png".format(img_name))
     # ps2.yield_sign_detection(sign_img)
-
-    # part_3()
+    part_3()
     # part_4()
     # part_5a()
     # part_5b()
