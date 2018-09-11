@@ -232,11 +232,11 @@ def part_3():
 
 def part_4():
     input_images = [
-        # 'scene_some_signs_noisy',
+        'scene_some_signs_noisy',
         'scene_all_signs_noisy'
     ]
     output_labels = [
-                     #'ps2-4-a-1',
+                     'ps2-4-a-1',
                      'ps2-4-a-2'
                     ]
 
@@ -273,14 +273,14 @@ def part_5b():
 
 if __name__ == '__main__':
 
-    # part_1()
+    part_1()
     # part_1_tests()
     # part_1_scenes_test()
-    # part_2()
-    # img_name = 'Picture_cleaned2'
-    # sign_img = cv2.imread("input_images/{}.png".format(img_name))
-    # ps2.stop_sign_detection(sign_img)
-    # part_3()
+    part_2()
+    # img_name = 'yield_173_358_blank'
+    # sign_img = cv2.imread("input_images/test_images/{}.png".format(img_name))
+    # ps2.yield_sign_detection(sign_img)
+    part_3()
     part_4()
     # part_5a()
     # part_5b()

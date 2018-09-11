@@ -72,12 +72,40 @@ def calculate_slope(x1, y1, x2, y2):
     return abs((y2 - y1) / (x2 - x1))
 
 
+def circles_touching(x1, y1, x2, y2, r1, r2):
+    x1 = int(x1)
+    y1 = int(y1)
+    x2 = int(x2)
+    y2 = int(y2)
+    # https://www.geeksforgeeks.org/check-two-given-circles-touch-intersect/
+    dist_sq = (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2)
+    rad_sum_sq = (r1 + r2) * (r1 + r2)
+    if dist_sq == rad_sum_sq:
+        return 5
+    elif dist_sq > rad_sum_sq:
+        return 0
+    else:
+        return 5
+
+
 def circle_group_deviations(circle_group):
     # x is most important so scale that by a factor of 2.
     x_cord = np.std(circle_group[:, 0]) * 2
     y_cord = np.std(circle_group[:, 1])
-    r = np.std(circle_group[:, 2])
-    return x_cord  + y_cord + r
+    r = np.std(circle_group[:, 2]) * 1.5
+
+    # if there is overlap, we know it isn't a solid grouping of traffic lights, add a value to indicate this
+    c1_x, c1_y, c1_r = circle_group[0, :]
+    c2_x, c2_y, c2_r = circle_group[1, :]
+    c3_x, c3_y, c3_r = circle_group[2, :]
+    # circle 1 to circle 2
+    c1_c2 = circles_touching(c1_x, c1_y, c2_x, c2_y, c1_r, c2_r)
+    # circle 1 to circle 3
+    c1_c3 = circles_touching(c1_x, c1_y, c3_x, c3_y, c1_r, c3_r)
+    # circle 2 to circle 3
+    c2_c3 = circles_touching(c2_x, c2_y, c3_x, c3_y, c2_r, c3_r)
+
+    return x_cord + y_cord + r + c1_c2 + c1_c3 + c2_c3
 
 
 def remove_duplicates(lines, dist=5):
@@ -89,28 +117,6 @@ def remove_duplicates(lines, dist=5):
                 del lines[idx2]
 
     return np.array(lines)
-
-
-def clean_edge_lines(lines, min_x, max_x, min_y, max_y):
-    # to clean up the lines we only want ones that are within a certain threshold of being at the edges.
-    # the lines should have a x1 or x2 within 3 of min_x and max_x
-    # should have a y1 or y2 within 3 of min_y and max_y
-    valid_lines = []
-    for l in lines:
-        left_diff = np.abs(l[0]-min_x)
-        right_diff = np.abs(l[2] - max_x)
-        yt1 = np.abs(l[1]-max_y)
-        yt2 = np.abs(l[3]-max_y)
-        yb1 = np.abs(l[1]-min_y)
-        yb2 = np.abs(l[3]-min_y)
-        if (yt1 < 5 and yt2 < 5) or (yb1 < 5 and yb2 < 5):
-            valid_lines.append(l)
-        elif left_diff < 5 or right_diff < 5:
-            valid_lines.append(l)
-    # remove duplicate lines once we removed ones that are not on the border.
-    valid_lines = remove_duplicates(valid_lines)
-    valid_lines = np.array(valid_lines)
-    return valid_lines
 
 
 def calculate_min_max_values(lines):
@@ -130,18 +136,11 @@ def calculate_min_max_values(lines):
 
 def red_masking(img, stop_mask=False):
     hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-    # display_img(hsv_img, 'Red HSV')
-    #cv2.imwrite("output/red_hsv.png", hsv_img)
-
     # lower mask
     lower_red = np.array([0, 100, 100])
     upper_red = np.array([10, 255, 255])
-
     red_mask = cv2.inRange(hsv_img, lower_red, upper_red)
     # display_img(red_mask, 'The Red Mask')
-
-    # stop_mask = False
-
     if not stop_mask:
         # make another red mask for border removal of stop sign.
         lower_red = np.array([160, 100, 100])
@@ -149,31 +148,16 @@ def red_masking(img, stop_mask=False):
         red_mask_2 = cv2.inRange(hsv_img, lower_red, upper_red)
         red_mask = red_mask - red_mask_2
 
-
     red = cv2.bitwise_and(img, img, mask=red_mask)
-    # print 'unique red map values'
-
     zero = 0
     h, s, v = red[:, :, 0], red[:, :, 1], red[:, :, 2]
-
     # the yield sign has a red of 204, stop is 255
     if stop_mask:
-        print 'Stop Mask Used'
         mask = (0 <= h) & (0 <= s) & (215 < v)
     else:
-        mask = (0 <= h) & (0 <= s) & (254 >= v)
-
+        mask = (0 <= h) & (0 <= s) & (215 >= v)
 
     red[:, :, :3][mask] = [zero, zero, zero]
-    # print np.unique(red.reshape(-1, red.shape[2]), axis=0)
-
-    # if trying to remove the stop signs, we want all pixels that
-    # are [ > 0, > 0 , > 230] to become black.
-
-    # original
-    # mask = (zero == h) & (zero == s) & (max == v)
-    # display_img(red, 'Red Masking For Stop')
-
     return red
 
 
@@ -224,14 +208,10 @@ def orange_masking(img):
     mask = (zero <= h) & (o >= s) & (red_2 <= v)
     # mask = (zero == h) & ( zero == s) & (red_2 <= v)
     orange[:, :, :3][mask] = [zero, zero, zero]
-
-    # cv2.imshow('Orange Things', orange)
-    # cv2.waitKey(0)
-
     return orange
 
 
-def traffic_light_detection(img_in, radii_range, noisy_image=False):
+def traffic_light_detection(img_in, radii_range, noisy_image=False, max_x_offset=5):
     """
 
     Finds the coordinates of a traffic light image given a radii
@@ -255,6 +235,7 @@ def traffic_light_detection(img_in, radii_range, noisy_image=False):
         img_in (numpy.array): image containing a traffic light.
         radii_range (list): range of radii values to search for.
         noisy_image (bool): If true, tweaks the threshold for circle detection
+        max_x_offset (number): The Max difference allowed in x offset
 
     Returns:
         tuple: 2-element tuple containing:
@@ -270,17 +251,16 @@ def traffic_light_detection(img_in, radii_range, noisy_image=False):
     # find all the circles in an image using Hough Circles
     min_radii = min(radii_range)
     max_radii = max(radii_range)
-    min_dist = min_radii * 2 + 10  # the distance between the circles should be the smallest possible circles that can touch.
+    # the distance between the circles should be the smallest possible circles that can touch.
+    min_dist = min_radii * 2 + 10
 
     # img, dp,  min_dist, param1, param2, minRad, maxRad
     if noisy_image:
-        # circles = hough_circles(img, 1.15, min_dist, 15, 15, min_radii, max_radii)
-        circles = hough_circles(img, 1.15, min_dist, 30, 20, min_radii, max_radii)
+        circles = hough_circles(img, 1.55, min_dist, 20, 15, min_radii, max_radii)
     else:
         circles = hough_circles(img, 1.15, min_dist, 30, 20, min_radii, max_radii)
 
     if circles is None:
-        print 'No Hough Circles Found in Traffic Lights'
         return (0, 0), None
     else:
         # cleanup circles so its easier to use.
@@ -288,16 +268,7 @@ def traffic_light_detection(img_in, radii_range, noisy_image=False):
         # round the numbers of the array to uint16 values.
         circles = np.uint16(np.around(circles))
 
-        cimg = img.copy()
-        # for i in circles:
-        #     # draw the outer circle
-        #     cv2.circle(cimg, (i[0], i[1]), i[2], (0, 255, 0), 2)
-        #     # draw the center of the circle
-        #     cv2.circle(cimg, (i[0], i[1]), 2, (0, 0, 255), 3)
-        # display_img(cimg, 'Traffic Circles 1')
-
     if len(circles) < 3:
-        print 'Not enough Hough Circles Found'
         return (0, 0), None
     else:  # If there are more than 3 circles found, eliminate the outliers that shouldn't be detected.
         # sort the circles first by x, then by Radius value, then by Y value.
@@ -316,37 +287,14 @@ def traffic_light_detection(img_in, radii_range, noisy_image=False):
         # for each group, calculate the std deviations.
         group_deviations = np.array([circle_group_deviations(g) for g in circle_groups])
 
-        # for i, value in np.ndenumerate(group_deviations):
-        #     group = circle_groups[i]
-        #     cimg = img.copy()
-        #     for i in group:
-        #         # draw the outer circle
-        #         cv2.circle(cimg, (i[0], i[1]), i[2], (0, 255, 0), 2)
-        #         # draw the center of the circle
-        #         cv2.circle(cimg, (i[0], i[1]), 2, (0, 0, 255), 3)
-        #     display_img(cimg, 'GRoup {} std of: {}'.format(i, value))
-        #
-        # print group_deviations
-
         most_similar_idx = np.argmin(group_deviations)
         final_circles = circle_groups[most_similar_idx]
-
-        # cimg = img.copy()
-        # for i in final_circles:
-        #     # draw the outer circle
-        #     cv2.circle(cimg, (i[0], i[1]), i[2], (0, 255, 0), 2)
-        #     # draw the center of the circle
-        #     cv2.circle(cimg, (i[0], i[1]), 2, (0, 0, 255), 3)
-        # display_img(cimg, 'Best Traffic Circles')
 
         # if the circles aren't close to each other in the X direction, return
         # none since its not a traffic light.
         x_diffs = np.diff(final_circles[:, 0])
-        if np.any(x_diffs > 5):
-            print 'They are too far away from each other'
+        if np.any(x_diffs >= max_x_offset):
             return (None, None), None
-
-        print x_diffs
 
         # sort the circles from top down to allow color compare.
         circles = final_circles[np.argsort(final_circles[:, 1])]  # sort by Y direction.
@@ -372,7 +320,6 @@ def traffic_light_detection(img_in, radii_range, noisy_image=False):
         elif (img_in[green_row, green_col] == green_color).all():
             state = 'green'
 
-        # print 'Traffic Light found at: {} and it is: {}'.format(cords, state)
         return cords, state
 
 
@@ -388,16 +335,17 @@ def yield_sign_detection(img_in):
     """
     img = img_in.copy()
     red_color_map = red_masking(img)
+
+    # kernel = np.ones((7, 7), np.uint8)
+    # red_color_map = cv2.filter2D(red_color_map, -1, kernel)
+    # red_color_map = cv2.erode(red_color_map, np.ones((5, 5)))
     red_color_map = cv2.dilate(red_color_map, np.ones((5, 5)))
     canny_edges = cv2.Canny(red_color_map, threshold1=50, threshold2=250, apertureSize=5)
-    #
-    # cv2.imshow('Canny Map', canny_edges)
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
+
     min_line_length = 20
     max_pixel_gap = 5
     hough_lines = cv2.HoughLinesP(image=canny_edges,
-                                  rho=0.5,
+                                  rho=.5,
                                   theta=np.pi / 180,
                                   threshold=25,
                                   minLineLength=min_line_length,
@@ -405,50 +353,58 @@ def yield_sign_detection(img_in):
                                   )
     if hough_lines is None:
         return None, None
-    hough_lines = hough_lines[0, :]
 
-    # print hough_lines
+    hough_lines = hough_lines[0, :]
     lines = remove_duplicates(hough_lines, dist=10)
 
+    mid_x = None
+    mid_y = None
 
-    # print 'Yield Line Count: {} '.format(len(lines))
+    if len(lines) >= 6:
+        # Fuzzy Logic here.
+        # find the line that has the longest length and has a slope of 1. This line will
+        # give us the vertex point we are interested in.
+        line_slopes = np.array([calculate_slope(x[0], x[1], x[2], x[3]) for x in lines])
+        line_lengths = np.array([calculate_line_length(x[0], x[1], x[2], x[3]) for x in lines])
+        # the lines with a slope of 2 are the ones that will be found for this sign. Get these lines and store them.
+        sloped_idx = np.where(line_slopes == 2)[0]
+        # loop over the valid slops and figure out max lenght
+        max_length = 0
+        for sid in sloped_idx:
+            idx_length = line_lengths[sid]
+            if idx_length > max_length:
+                max_length = idx_length
 
-    if len(lines) < 6:
-        return None, None
+        v_idx = np.where(line_lengths == max_length)[0][0]
+        vertex_line = lines[v_idx]
 
-    if len(lines) > 6:
-        # need to remove lines that aren't close to the other ones. This is accomplished
-        # by calculating the mean X1 cords of all the lines. remove one line at a time till only 6
-        # are found.
-        line_list = lines[:, 0].tolist()
-        # print line_list
-        while len(line_list) > 6:
-            l_l = lines.tolist()
-            x1_mean = np.mean(line_list)
-            mean_diffs = [abs(x - x1_mean) for x in line_list]
-            max_err = np.max(mean_diffs)
-            max_loc = mean_diffs.index(max_err)
-            # print 'remove from array at loc of: {}'.format(max_loc)
-            del l_l[max_loc]
-            lines = np.array(l_l)
-            line_list = lines[:, 0].tolist()
+        # once the vertex line is found, all lines that are not within the length from the x1 can be ignore.
+        max_x_1 = np.int(vertex_line[0] + max_length)
+        min_x_1 = np.int(vertex_line[0] - max_length)
+        # from lines delete all lines where x1 < min_x_1 and all lines where x1 > max_x_1
+        l_list = lines.tolist()
+        for idx, line in enumerate(l_list):
+            if line[0] < min_x_1:
+                del l_list[idx]
+            elif line[0] > max_x_1:
+                del l_list[idx]
+        f_line = np.array(l_list)
 
-    # imgc = img.copy()
-    # for line in lines:
-    #     cv2.line(imgc, (line[0], line[1]), (line[2], line[3]), (255, 122, 122), 2)
-    # cv2.imshow('Hough Lines Map', imgc)
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
+        if len(f_line) < 6:
+            return None, None  # not a valid sign
 
-    # determine midpoint.
-    # midpoint x will be at teh midpoint of the longest line (x2 -x1) that has the same Y values.
-    sorted_lines = lines[np.argsort(lines[:, 0])]  # sort by x1 direction.
-    for l in sorted_lines:
-        if np.abs(l[1] - l[3]) < 5: # the line is pretty straight, good enough.
-            mid_x = np.int((l[0] + l[2]) / 2)
-            mid_y = np.int(l[1] + ((l[2]-l[0])*np.cos(np.pi/6) - ((l[2]-l[0])/2)/np.cos(np.pi/6)))
-            return mid_x,  mid_y  # return we are done.
-    return None, None
+        mid_x = vertex_line[0]
+        x_point_2 = vertex_line[2]
+        y_point = vertex_line[3]
+        t = abs(x_point_2 - mid_x) * 2
+        top_x_1, top_x_2 = [
+            np.int(x_point_2 - t),
+            np.int(x_point_2)
+        ]
+        mid_y = np.int(y_point + ((top_x_2 - top_x_1) * np.cos(np.pi / 6) -
+                                  ((top_x_2 - top_x_1) / 2) / np.cos(np.pi / 6)))
+
+    return mid_x, mid_y
 
 
 def stop_sign_detection(img_in):
@@ -466,12 +422,11 @@ def stop_sign_detection(img_in):
     red_color_map = red_masking(img, stop_mask=True)
     red_color_map = cv2.dilate(red_color_map, np.ones((5, 5)))
     canny_edges = cv2.Canny(red_color_map, threshold1=50, threshold2=250, apertureSize=5)
-    # cv2.imshow('Canny Map', canny_edges)
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
 
-    min_line_length = 20
-    max_pixel_gap = 20
+    # display_img(canny_edges, 'Stop Sign Canny Lines')
+
+    min_line_length = 10
+    max_pixel_gap = 10
     hough_lines = cv2.HoughLinesP(image=canny_edges,
                                   rho=0.5,
                                   theta=np.pi/180,
@@ -482,11 +437,6 @@ def stop_sign_detection(img_in):
     if hough_lines is None:
         return None, None
     hough_lines = hough_lines[0, :]  # cleanup dimensionality to make it easier to work with.
-
-    # to capture the top and bottom of the stop sign,
-    left_x_cord, right_x_cord, bot_y_cord, top_y_cord = calculate_min_max_values(hough_lines)
-    # lines = clean_edge_lines(hough_lines, left_x_cord, right_x_cord, bot_y_cord, top_y_cord)
-
     lines = remove_duplicates(hough_lines)
 
     if len(lines) < 8:
@@ -496,17 +446,6 @@ def stop_sign_detection(img_in):
     min_x, max_x, min_y, max_y = calculate_min_max_values(lines)
     mid_x = min_x + ((max_x - min_x) / 2)
     mid_y = min_y + ((max_y - min_y) / 2)
-
-    # print 'Mid is found at ({}, {})'.format(mid_x, mid_y)
-    #
-    # # loop over lines and place them on a new image to test.
-    # imgc = img.copy()
-    # for line in lines:
-    #     cv2.line(imgc, (line[0], line[1]), (line[2], line[3]), (255, 122, 122), 2)
-    # cv2.imshow('Hough Lines Map', imgc)
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
-
     return mid_x, mid_y
 
 
@@ -549,15 +488,6 @@ def warning_sign_detection(img_in):
     # print 'Warning mid at ({}, {})'.format(mid_x, mid_y)
     return mid_x, mid_y
 
-    # # loop over lines and place them on a new image to test.
-    # imgc = img.copy()
-    # for line in hough_lines:
-    #     cv2.line(imgc, (line[0], line[1]), (line[2], line[3]), (255, 122, 122), 2)
-    # cv2.imshow('Hough Lines Map', imgc)
-    # cv2.waitKey(0)
-    #
-    # raise NotImplementedError
-
 
 def construction_sign_detection(img_in):
     """Finds the centroid coordinates of a construction sign in the
@@ -572,14 +502,7 @@ def construction_sign_detection(img_in):
     img = img_in.copy()
     orange_color_map = orange_masking(img)
     orange_color_map = cv2.dilate(orange_color_map, np.ones((5, 5)))
-    # cv2.imshow('Orange Map', orange_color_map)
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
     canny_edges = cv2.Canny(orange_color_map, threshold1=50, threshold2=250, apertureSize=5)
-
-    # cv2.imshow('Canny Map', canny_edges)
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
 
     min_line_length = 20
     max_pixel_gap = 20
@@ -629,7 +552,7 @@ def do_not_enter_sign_detection(img_in):
         circles = circles[0, :]
         # since multiple circles might be found, the correct one
         circle_mid_colors = [pixel_color(img, x[0], x[1]) for x in circles]
-        valid_idx = circle_mid_colors.index(255)
+        valid_idx = circle_mid_colors.index(np.max(circle_mid_colors))
         the_sign = circles[valid_idx]
     else:
         return None, None
@@ -638,7 +561,7 @@ def do_not_enter_sign_detection(img_in):
     return output
 
 
-def traffic_sign_detection(img_in):
+def traffic_sign_detection(img_in, light_size=(3, 30), light_offset = 5):
     """Finds all traffic signs in a synthetic image.
 
     The image may contain at least one of the following:
@@ -657,6 +580,8 @@ def traffic_sign_detection(img_in):
     Args:
         img_in (numpy.array): input image containing at least one
                               traffic sign.
+        light_size (tuple): The min and max radii for traffic light detection
+        light_offset(number): The value that traffic lights can be offset in the x direction to be valid.
 
     Returns:
         dict: dictionary containing only the signs present in the
@@ -671,19 +596,19 @@ def traffic_sign_detection(img_in):
     dict = {} # return dictionary
 
     # traffic lights
-    # (x, y), state = traffic_light_detection(img, (5, 30), noisy_image=True)
-    # if state is not None:
-    #     dict['traffic_light'] = (x,y)
-    #
-    # # orange signs ( construction )
-    # (x, y) = construction_sign_detection(img)
-    # if x is not None:
-    #     dict['construction'] = (x, y)
-    #
-    # # yellow signs (warning)
-    # (x, y) = warning_sign_detection(img)
-    # if x is not None:
-    #     dict['warning'] = (x, y)
+    (x, y), state = traffic_light_detection(img, light_size, noisy_image=True, max_x_offset=light_offset)
+    if state is not None:
+        dict['traffic_light'] = (x, y)
+
+    # orange signs ( construction )
+    (x, y) = construction_sign_detection(img)
+    if x is not None:
+        dict['construction'] = (x, y)
+
+    # yellow signs (warning)
+    (x, y) = warning_sign_detection(img)
+    if x is not None:
+        dict['warning'] = (x, y)
 
     # stop sign
     (x, y) = stop_sign_detection(img)
@@ -691,17 +616,16 @@ def traffic_sign_detection(img_in):
         dict['stop'] = (x, y)
 
     # yield sign
-    # (x, y) = yield_sign_detection(img)
-    # if x is not None:
-    #     dict['yield'] = (x, y)
+    (x, y) = yield_sign_detection(img)
+    if x is not None:
+        dict['yield'] = (x, y)
 
     # # dne sign
-    # (x, y) = do_not_enter_sign_detection(img)
-    # if x is not None:
-    #     dict['no_entry'] = (x, y)
+    (x, y) = do_not_enter_sign_detection(img)
+    if x is not None:
+        dict['no_entry'] = (x, y)
 
     return dict
-    # raise NotImplementedError
 
 
 def traffic_sign_detection_noisy(img_in):
@@ -738,22 +662,12 @@ def traffic_sign_detection_noisy(img_in):
         src=img,
         dst=None,
         templateWindowSize=7,
-        searchWindowSize=35,
-        h=13,
-        hColor=10
+        searchWindowSize=21,
+        h=15,
+        hColor=15
     )
-
-    # sharpen for edges.
-    # clean_picture = cv2.GaussianBlur(img_in, (5, 5), 0)
-    # kernel = np.array([[-1, -1, -1], [-1, 9, -1], [-1, -1, -1]])
-    # clean_picture = cv2.filter2D(clean_picture, -1, kernel=kernel)
-
-    # clean_picture = cv2.medianBlur(img, 3)
-
-    display_img(clean_picture, 'Cleaned Picture')
-    # cv2.imwrite("output/Picture_cleaned.png", clean_picture)
-
-    return traffic_sign_detection(clean_picture)
+    clean_picture = cv2.bilateralFilter(clean_picture, 9, 75, 75)
+    return traffic_sign_detection(clean_picture, light_size=(8, 30), light_offset=10)
 
 
 def traffic_sign_detection_challenge(img_in):
