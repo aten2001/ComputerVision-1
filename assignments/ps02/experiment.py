@@ -71,6 +71,8 @@ def mark_traffic_signs(image_in, signs_dict):
     """
     img = image_in.copy()
 
+    print signs_dict
+
     # loop over the dictionary, add all KVP as lables and mid points.
     for key, value in signs_dict.iteritems():
         cv2.circle(img, value, 4, (0, 0, 0), -3)
@@ -91,8 +93,16 @@ def mark_traffic_signs(image_in, signs_dict):
 
 def part_1():
 
-    input_images = ['simple_tl', 'scene_tl_1', 'scene_tl_2', 'scene_tl_3']
-    output_labels = ['ps2-1-a-1', 'ps2-1-a-2', 'ps2-1-a-3', 'ps2-1-a-4']
+    input_images = ['simple_tl',
+                    'scene_tl_1',
+                    'scene_tl_2',
+                    'scene_tl_3'
+                    ]
+    output_labels = ['ps2-1-a-1',
+                     'ps2-1-a-2',
+                     'ps2-1-a-3',
+                     'ps2-1-a-4'
+                     ]
 
     # Define a radii range, you may define a smaller range based on your
     # observations.
@@ -158,6 +168,7 @@ def part_1_scenes_test():
         img_out = draw_tl_center(tl, coords, state)
         cv2.imwrite("output/{}.png".format(label), img_out)
 
+
 def part_2():
 
     input_images = ['scene_dne_1',
@@ -202,11 +213,11 @@ def part_2():
 def part_3():
 
     input_images = [
-                    #'scene_some_signs',
+                    'scene_some_signs',
                     'scene_all_signs'
                     ]
     output_labels = [
-                    #'ps2-3-a-1',
+                    'ps2-3-a-1',
                      'ps2-3-a-2'
                      ]
 
@@ -220,8 +231,14 @@ def part_3():
 
 
 def part_4():
-    input_images = ['scene_some_signs_noisy', 'scene_all_signs_noisy']
-    output_labels = ['ps2-4-a-1', 'ps2-4-a-2']
+    input_images = [
+        'scene_some_signs_noisy',
+        'scene_all_signs_noisy'
+    ]
+    output_labels = [
+                     'ps2-4-a-1',
+                     'ps2-4-a-2'
+                    ]
 
     for img_in, label in zip(input_images, output_labels):
         scene = cv2.imread("input_images/{}.png".format(img_in))
@@ -238,7 +255,6 @@ def part_5a():
     for img_in, label in zip(input_images, output_labels):
         scene = cv2.imread("input_images/{}.png".format(img_in))
         coords = ps2.traffic_sign_detection_challenge(scene)
-
         img_out = mark_traffic_signs(scene, coords)
         cv2.imwrite("output/{}.png".format(label), img_out)
 
@@ -257,15 +273,15 @@ def part_5b():
 
 if __name__ == '__main__':
 
-    # part_1()
+    part_1()
     # part_1_tests()
     # part_1_scenes_test()
-    # part_2()
+    part_2()
     # img_name = 'yield_173_358_blank'
     # sign_img = cv2.imread("input_images/test_images/{}.png".format(img_name))
     # ps2.yield_sign_detection(sign_img)
     part_3()
-    # part_4()
+    part_4()
     # part_5a()
     # part_5b()
 
