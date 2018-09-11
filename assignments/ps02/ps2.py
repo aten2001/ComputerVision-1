@@ -5,6 +5,12 @@ import cv2
 import numpy as np
 
 
+def display_img(img, title='Image'):
+    cv2.imshow(title, img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+
 def process_base_image(img, kernel_size, show_image=False):
     """
     Will take a given input image and convert the image to
@@ -23,9 +29,7 @@ def process_base_image(img, kernel_size, show_image=False):
     processed_image = cv2.cvtColor(processed_image, cv2.COLOR_BGR2GRAY)
     processed_image = cv2.GaussianBlur(processed_image, kernel_size, 0)
     if show_image:
-        cv2.imshow('Gray Scale Image', processed_image)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+        display_img(processed_image, 'Gray Scale Image')
     return processed_image
 
 
@@ -35,7 +39,7 @@ def hough_circles(img, dp, min_dist, p1, p2, min_rad, max_rad):
         method=cv2.cv.CV_HOUGH_GRADIENT,
         # method=cv2.HOUGH_GRADIENT,
         dp=dp,
-        minDist=min_dist*2,
+        minDist=min_dist,
         param1=p1,
         param2=p2,
         minRadius=min_rad,
@@ -66,6 +70,14 @@ def calculate_line_length(x1, y1, x2, y2):
 
 def calculate_slope(x1, y1, x2, y2):
     return abs((y2 - y1) / (x2 - x1))
+
+
+def circle_group_deviations(circle_group):
+    # x is most important so scale that by a factor of 2.
+    x_cord = np.std(circle_group[:, 0]) * 2
+    y_cord = np.std(circle_group[:, 1])
+    r = np.std(circle_group[:, 2])
+    return x_cord  + y_cord + r
 
 
 def remove_duplicates(lines, dist=5):
@@ -118,21 +130,49 @@ def calculate_min_max_values(lines):
 
 def red_masking(img, stop_mask=False):
     hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    # display_img(hsv_img, 'Red HSV')
+    #cv2.imwrite("output/red_hsv.png", hsv_img)
+
     # lower mask
-    lower_red = np.array([0, 50, 50])
+    lower_red = np.array([0, 100, 100])
     upper_red = np.array([10, 255, 255])
+
     red_mask = cv2.inRange(hsv_img, lower_red, upper_red)
+    # display_img(red_mask, 'The Red Mask')
+
+    # stop_mask = False
+
+    if not stop_mask:
+        # make another red mask for border removal of stop sign.
+        lower_red = np.array([160, 100, 100])
+        upper_red = np.array([179, 255, 255])
+        red_mask_2 = cv2.inRange(hsv_img, lower_red, upper_red)
+        red_mask = red_mask - red_mask_2
+
+
     red = cv2.bitwise_and(img, img, mask=red_mask)
     # print 'unique red map values'
-    # print np.unique(red.reshape(-1, red.shape[2]), axis=0)
-    # want to change all [0, 128, 128] to 0 values to remove greens
-    max = 204
-    if stop_mask:
-        max = 255
+
     zero = 0
     h, s, v = red[:, :, 0], red[:, :, 1], red[:, :, 2]
-    mask = (zero == h) & (zero == s) & (max == v)
+
+    # the yield sign has a red of 204, stop is 255
+    if stop_mask:
+        print 'Stop Mask Used'
+        mask = (0 <= h) & (0 <= s) & (215 < v)
+    else:
+        mask = (0 <= h) & (0 <= s) & (254 >= v)
+
+
     red[:, :, :3][mask] = [zero, zero, zero]
+    # print np.unique(red.reshape(-1, red.shape[2]), axis=0)
+
+    # if trying to remove the stop signs, we want all pixels that
+    # are [ > 0, > 0 , > 230] to become black.
+
+    # original
+    # mask = (zero == h) & (zero == s) & (max == v)
+    # display_img(red, 'Red Masking For Stop')
 
     return red
 
@@ -144,15 +184,16 @@ def yellow_masking(img):
     lower_yellow = np.array([20, 100, 100])  # <- higher than orange
     upper_yellow = np.array([30, 255, 255])
     yellow_mask = cv2.inRange(hsv_img, lower_yellow, upper_yellow)
-
+    # display_img(yellow_mask, 'Yellow Mask')
     yellow = cv2.bitwise_and(img, img, mask=yellow_mask)
     # want to change all [0, 128, 128] to 0 values to remove greens
-    max = 128
+    max = 200
     zero = 0
     h, s, v = yellow[:, :, 0], yellow[:, :, 1], yellow[:, :, 2]
-    mask = (zero == h) & (max == s) & (max == v)
+    # mask all values that are [ < 0, >=max, <= max] to zero. removes yellow noise
+    mask = (zero <= h) & (max >= s) & (max >= v)
     yellow[:, :, :3][mask] = [zero, zero, zero]
-
+    # display_img(yellow, ' Yellow Done')
     return yellow
 
 
@@ -169,43 +210,17 @@ def orange_masking(img):
     lower_orange = np.array([0, 175, 175])
     upper_orange = np.array([20, 255, 255])
     orange_mask = cv2.inRange(hsv_image, lower_orange, upper_orange)
-
-    # cv2.imshow('Orange Mask', orange_mask)
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
-
     orange = cv2.bitwise_and(img, img, mask=orange_mask)
-
-    # print np.unique(orange.reshape(-1, orange.shape[2]), axis=0)
-    #
-    # h_values = np.unique(orange[:,:, 0])
-    # s_values = np.unique(orange[:, :, 1])
-    # v_values = np.unique(orange[:, :, 2])
-    # print 'HValues'
-    # print h_values
-    #
-    # print 'SValues'
-    # print s_values
-    #
-    # print 'VValues'
-    # print v_values
-
     # [ 0 0 204 ] red to remove
     # [ 0 0 255 ] another red to remove
     # [0 128 255] orange we want
-
-    # cv2.imshow('Orange BW', orange)
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
-
     # remove the red masks [0,0,255]
     red = 255
-
     red_2 = 175
     zero = 0
-    #o = 125
     o = 120
     h, s, v = orange[:, :, 0], orange[:, :, 1], orange[:, :, 2]
+    # set values that are [ > 0, < orange, > red] to zero.
     mask = (zero <= h) & (o >= s) & (red_2 <= v)
     # mask = (zero == h) & ( zero == s) & (red_2 <= v)
     orange[:, :, :3][mask] = [zero, zero, zero]
@@ -216,7 +231,7 @@ def orange_masking(img):
     return orange
 
 
-def traffic_light_detection(img_in, radii_range, other_signs=False):
+def traffic_light_detection(img_in, radii_range, noisy_image=False):
     """
 
     Finds the coordinates of a traffic light image given a radii
@@ -239,6 +254,7 @@ def traffic_light_detection(img_in, radii_range, other_signs=False):
     Args:
         img_in (numpy.array): image containing a traffic light.
         radii_range (list): range of radii values to search for.
+        noisy_image (bool): If true, tweaks the threshold for circle detection
 
     Returns:
         tuple: 2-element tuple containing:
@@ -246,6 +262,7 @@ def traffic_light_detection(img_in, radii_range, other_signs=False):
                              convention.
         state (str): traffic light state. A value in {'red', 'yellow',
                      'green'}
+
     """
 
     img = process_base_image(img_in, (7, 7))
@@ -253,123 +270,110 @@ def traffic_light_detection(img_in, radii_range, other_signs=False):
     # find all the circles in an image using Hough Circles
     min_radii = min(radii_range)
     max_radii = max(radii_range)
+    min_dist = min_radii * 2 + 10  # the distance between the circles should be the smallest possible circles that can touch.
 
-    circles = hough_circles(img, 1.15, min_radii, 30, 15, min_radii, max_radii)
-    # cleanup circles so its easier to use.
-    circles = circles[0, :]
-    # round the numbers of the array to uint16 values.
-    circles = np.uint16(np.around(circles))
+    # img, dp,  min_dist, param1, param2, minRad, maxRad
+    if noisy_image:
+        # circles = hough_circles(img, 1.15, min_dist, 15, 15, min_radii, max_radii)
+        circles = hough_circles(img, 1.15, min_dist, 30, 20, min_radii, max_radii)
+    else:
+        circles = hough_circles(img, 1.15, min_dist, 30, 20, min_radii, max_radii)
 
     if circles is None:
-        # print 'No Hough Circles Found in Traffic Lights'
+        print 'No Hough Circles Found in Traffic Lights'
         return (0, 0), None
-    # else:
-    #     cimg = img.copy()
-    #     for i in circles:
-    #         # draw the outer circle
-    #         cv2.circle(cimg,(i[0],i[1]),i[2],(0,255,0),2)
-    #         # draw the center of the circle
-    #         cv2.circle(cimg,(i[0],i[1]),2,(0,0,255),3)
-    #     cv2.imshow('Traffic Circles Image', cimg)
-    #     cv2.waitKey(0)
-    #     cv2.destroyAllWindows()
+    else:
+        # cleanup circles so its easier to use.
+        circles = circles[0, :]
+        # round the numbers of the array to uint16 values.
+        circles = np.uint16(np.around(circles))
 
-
-    # If there are more than 3 circles found, eliminate the outliers.
-    if len(circles) > 3:
-        median_x = np.median(circles[:, 0])
-        if other_signs:
-            counts = np.bincount(circles[:, 0])
-            mode_x = np.argmax(counts)
-            if np.count_nonzero(circles[:, 0] == mode_x) >= 3:
-                median_x = mode_x
-
-        min_x = median_x - 5
-        max_x = median_x + 5
-        circles = circles[circles[:, 0] > min_x, :]
-        circles = circles[circles[:, 0] < max_x, :]
-
-    # cimg = img.copy()
-    # for i in circles:
-    #     # draw the outer circle
-    #     cv2.circle(cimg, (i[0], i[1]), i[2], (0, 255, 0), 2)
-    #     # draw the center of the circle
-    #     cv2.circle(cimg, (i[0], i[1]), 2, (0, 0, 255), 3)
-    # cv2.imshow('Traffic Circles Image CLean 1', cimg)
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
-
-    # if there are still more than 3 circles, that means there is a circle directly above
-    # or below the actual traffic light. Need to group them into possible sets of 3. First sort by the
-    # y Direction, then compare each row with the one below it and store the difference in Y. The three
-    # lights of interest will be the ones that are closest to each other.
-    if len(circles) >= 3:
-        sorted_circles = circles[np.lexsort((circles[:, 2], circles[:, 0], circles[:, 1]))]
-
-        radius_counts = np.bincount(circles[:, 2])
-        mode_r = np.argmax(radius_counts)
-        diff_from_mode = np.array([abs(x[2] - mode_r) for x in sorted_circles])
-        # get the 3 idx of the ones closest to the mode.
-        small_diff_idx = np.array(diff_from_mode.argsort()[:3])
-        # remove ones with radius too large.
-        sorted_circles = sorted_circles[small_diff_idx, :]
-        t_circles = np.int16(sorted_circles)
-        y_diffs = np.abs(np.diff(t_circles[:, 1]))
-
-        small_diff_idx = y_diffs.argsort()[:2] # get the 2 smallest index values.
-        # if the smallest diff index is 0, get 0,1,2. if not, get smallest index + 2 rows.
-        smallest_idx = min(small_diff_idx)
-        circles = sorted_circles[smallest_idx: smallest_idx+3, :]
-        # t_circles = np.int16(circles[:, :])
-        #
-        # print t_circles
-        #
-        # rad_differences = np.diff(t_circles[:, 2])
-        # print 'rad differences is'
-        # print rad_differences
-
-
-    # cimg = img.copy()
-    # for i in circles:
-    #     # draw the outer circle
-    #     cv2.circle(cimg, (i[0], i[1]), i[2], (0, 255, 0), 2)
-    #     # draw the center of the circle
-    #     cv2.circle(cimg, (i[0], i[1]), 2, (0, 0, 255), 3)
-    # cv2.imshow('Traffic Circles Image CLean 2', cimg)
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
-
+        cimg = img.copy()
+        # for i in circles:
+        #     # draw the outer circle
+        #     cv2.circle(cimg, (i[0], i[1]), i[2], (0, 255, 0), 2)
+        #     # draw the center of the circle
+        #     cv2.circle(cimg, (i[0], i[1]), 2, (0, 0, 255), 3)
+        # display_img(cimg, 'Traffic Circles 1')
 
     if len(circles) < 3:
+        print 'Not enough Hough Circles Found'
         return (0, 0), None
+    else:  # If there are more than 3 circles found, eliminate the outliers that shouldn't be detected.
+        # sort the circles first by x, then by Radius value, then by Y value.
+        circles = sorted(circles, key=lambda c: (c[0], c[2], c[1]))
 
-    # sort the circles from top down to allow color compare.
-    circles = circles[np.argsort(circles[:, 1])]  # sort by Y direction.
-    # creating some names for clarity due to x, y being col, row.
+        # since the traffic lights will be a group of 3 circles with a similar radius, then x value, then somewhat close
+        # in y value, use a "window" type of sliding group to create groups of 3 circles that can then be compared
+        # to each other to see if they would make up circles of a traffic light.
+        circle_groups = []
+        for c_idx in range(len(circles) - 2):
+            circle_group = circles[c_idx: c_idx + 3]  # build the group
+            circle_groups.append(circle_group)
 
-    red_row, red_col, yellow_row, yellow_col, green_row, green_col = [
-        circles[0][1],
-        circles[0][0],
-        circles[1][1],
-        circles[1][0],
-        circles[2][1],
-        circles[2][0],
-    ]
+        circle_groups = np.array(circle_groups)
+        # for each circle group found, need to figure out the group with the lowest overall standard deviation.
+        # for each group, calculate the std deviations.
+        group_deviations = np.array([circle_group_deviations(g) for g in circle_groups])
 
-    # determine colors.
-    state = 'yellow'  # default state.
-    cords = (yellow_col, yellow_row)
+        # for i, value in np.ndenumerate(group_deviations):
+        #     group = circle_groups[i]
+        #     cimg = img.copy()
+        #     for i in group:
+        #         # draw the outer circle
+        #         cv2.circle(cimg, (i[0], i[1]), i[2], (0, 255, 0), 2)
+        #         # draw the center of the circle
+        #         cv2.circle(cimg, (i[0], i[1]), 2, (0, 0, 255), 3)
+        #     display_img(cimg, 'GRoup {} std of: {}'.format(i, value))
+        #
+        # print group_deviations
 
-    red_color = np.array([0, 0, 255])
-    green_color = np.array([0, 255, 0])
+        most_similar_idx = np.argmin(group_deviations)
+        final_circles = circle_groups[most_similar_idx]
 
-    if (img_in[red_row, red_col] == red_color).all():
-        state = 'red'
-    elif (img_in[green_row, green_col] == green_color).all():
-        state = 'green'
+        # cimg = img.copy()
+        # for i in final_circles:
+        #     # draw the outer circle
+        #     cv2.circle(cimg, (i[0], i[1]), i[2], (0, 255, 0), 2)
+        #     # draw the center of the circle
+        #     cv2.circle(cimg, (i[0], i[1]), 2, (0, 0, 255), 3)
+        # display_img(cimg, 'Best Traffic Circles')
 
-    # print 'Traffic Light found at: {} and it is: {}'.format(cords, state)
-    return cords, state
+        # if the circles aren't close to each other in the X direction, return
+        # none since its not a traffic light.
+        x_diffs = np.diff(final_circles[:, 0])
+        if np.any(x_diffs > 5):
+            print 'They are too far away from each other'
+            return (None, None), None
+
+        print x_diffs
+
+        # sort the circles from top down to allow color compare.
+        circles = final_circles[np.argsort(final_circles[:, 1])]  # sort by Y direction.
+        # creating some names for clarity due to x, y being col, row.
+        red_row, red_col, yellow_row, yellow_col, green_row, green_col = [
+            circles[0][1],
+            circles[0][0],
+            circles[1][1],
+            circles[1][0],
+            circles[2][1],
+            circles[2][0],
+        ]
+
+        # determine colors.
+        state = 'yellow'  # default state.
+        cords = (yellow_col, yellow_row)
+
+        red_color = np.array([0, 0, 255])
+        green_color = np.array([0, 255, 0])
+
+        if (img_in[red_row, red_col] == red_color).all():
+            state = 'red'
+        elif (img_in[green_row, green_col] == green_color).all():
+            state = 'green'
+
+        # print 'Traffic Light found at: {} and it is: {}'.format(cords, state)
+        return cords, state
 
 
 def yield_sign_detection(img_in):
@@ -536,7 +540,7 @@ def warning_sign_detection(img_in):
 
     hough_lines = hough_lines[0, :]
     lines = remove_duplicates(hough_lines)
-    if lines.shape[1] != 4: # this wasn't a diamond, return.
+    if lines.shape[1] != 4:  # this wasn't a diamond, return.
         return None, None
     min_x, max_x, min_y, max_y = calculate_min_max_values(lines)
     mid_x = min_x + ((max_x - min_x) / 2)
@@ -667,30 +671,30 @@ def traffic_sign_detection(img_in):
     dict = {} # return dictionary
 
     # traffic lights
-    (x, y), state = traffic_light_detection(img, (3, 30), other_signs=True)
-    if state is not None:
-        dict['traffic_light'] = (x,y)
-
-    # orange signs ( construction )
-    (x, y) = construction_sign_detection(img)
-    if x is not None:
-        dict['construction'] = (x, y)
+    # (x, y), state = traffic_light_detection(img, (5, 30), noisy_image=True)
+    # if state is not None:
+    #     dict['traffic_light'] = (x,y)
+    #
+    # # orange signs ( construction )
+    # (x, y) = construction_sign_detection(img)
+    # if x is not None:
+    #     dict['construction'] = (x, y)
     #
     # # yellow signs (warning)
     # (x, y) = warning_sign_detection(img)
     # if x is not None:
     #     dict['warning'] = (x, y)
-    #
-    # # stop sign
-    # (x, y) = stop_sign_detection(img)
-    # if x is not None:
-    #     dict['stop'] = (x, y)
-    #
-    # # yield sign
+
+    # stop sign
+    (x, y) = stop_sign_detection(img)
+    if x is not None:
+        dict['stop'] = (x, y)
+
+    # yield sign
     # (x, y) = yield_sign_detection(img)
     # if x is not None:
     #     dict['yield'] = (x, y)
-    #
+
     # # dne sign
     # (x, y) = do_not_enter_sign_detection(img)
     # if x is not None:
@@ -733,13 +737,22 @@ def traffic_sign_detection_noisy(img_in):
     clean_picture = cv2.fastNlMeansDenoisingColored(
         src=img,
         dst=None,
-        templateWindowSize=10,
-        searchWindowSize=21,
+        templateWindowSize=7,
+        searchWindowSize=35,
         h=13,
-        hColor=30
+        hColor=10
     )
-    cv2.imshow('Cleaned Picture', clean_picture)
-    cv2.waitKey(0)
+
+    # sharpen for edges.
+    # clean_picture = cv2.GaussianBlur(img_in, (5, 5), 0)
+    # kernel = np.array([[-1, -1, -1], [-1, 9, -1], [-1, -1, -1]])
+    # clean_picture = cv2.filter2D(clean_picture, -1, kernel=kernel)
+
+    # clean_picture = cv2.medianBlur(img, 3)
+
+    display_img(clean_picture, 'Cleaned Picture')
+    # cv2.imwrite("output/Picture_cleaned.png", clean_picture)
+
     return traffic_sign_detection(clean_picture)
 
 
