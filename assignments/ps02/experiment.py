@@ -38,7 +38,18 @@ def draw_tl_center(image_in, center, state):
         traffic light center and text that presents the numerical
         coordinates with the traffic light state.
     """
-    raise NotImplementedError
+    img = image_in.copy()
+    # draw the midpoint.
+    cv2.circle(img, (center[0], center[1]), 4, (0, 0, 0), -3)
+    # add the state
+    disp_str = '(({}, {} ), {} )'.format(center[0], center[1], state)
+    # calc label position
+    if center[0] + len(disp_str)*10 > image_in.shape[1]:
+        mid_label = center[0] - len(disp_str) * 10 - 50
+    else:
+        mid_label = center[0] + 20
+    cv2.putText(img, disp_str, (mid_label, center[1]), cv2.FONT_HERSHEY_PLAIN, 1, (0, 0, 0), 2)
+    return img
 
 
 def mark_traffic_signs(image_in, signs_dict):
@@ -63,13 +74,42 @@ def mark_traffic_signs(image_in, signs_dict):
         numpy.array: output image showing markers on each traffic
         sign.
     """
-    raise NotImplementedError
+    img = image_in.copy()
+
+    # loop over the dictionary, add all KVP as labels and mid points.
+    for key, value in signs_dict.iteritems():
+        cv2.circle(img, value, 4, (0, 0, 0), -3)
+        # add the cords to the key to print.
+        label = key
+        cords = '({}, {})'.format(value[0], value[1])
+
+        # each character is about 10 pixels, shift to fit
+        word_width = 10 * len(label)
+        # place the text below the midpoint value
+        key_offset = value[0] - word_width / 2
+
+        # print 'Img Width is: {}'.format(img.shape[1])
+        # print 'key offset is: {}'.format(key_offset)
+        # print 'Word with is: {}'.format(word_width)
+        # print 'With words edge will be at {} '.format(key_offset + (word_width/2))
+        cv2.putText(img, label, (key_offset, value[1] + 20), cv2.FONT_HERSHEY_PLAIN, 1, (0, 0, 0), 2)
+        cv2.putText(img, cords, (key_offset, value[1] + 40), cv2.FONT_HERSHEY_PLAIN, 1, (0, 0, 0), 2)
+
+    return img
 
 
 def part_1():
 
-    input_images = ['simple_tl', 'scene_tl_1', 'scene_tl_2', 'scene_tl_3']
-    output_labels = ['ps2-1-a-1', 'ps2-1-a-2', 'ps2-1-a-3', 'ps2-1-a-4']
+    input_images = ['simple_tl',
+                    'scene_tl_1',
+                    'scene_tl_2',
+                    'scene_tl_3'
+                    ]
+    output_labels = ['ps2-1-a-1',
+                     'ps2-1-a-2',
+                     'ps2-1-a-3',
+                     'ps2-1-a-4'
+                     ]
 
     # Define a radii range, you may define a smaller range based on your
     # observations.
@@ -84,19 +124,87 @@ def part_1():
         cv2.imwrite("output/{}.png".format(label), img_out)
 
 
+def part_1_tests():
+    input_images = ['simple_tl_test',
+                    'tl_green_299_287_blank',
+                    'tl_red_199_137_blank',
+                    'tl_yellow_199_237_blank'
+                    ]
+    output_labels = ['simple_tl_out',
+                     'tl_green_299_287_out',
+                     'tl_red_199_137_out',
+                     'tl_yellow_199_237_out'
+                     ]
+
+    # Define a radii range, you may define a smaller range based on your
+    # observations.
+    radii_range = range(10, 30, 1)
+
+    for img_in, label in zip(input_images, output_labels):
+        tl = cv2.imread("input_images/test_images/{}.png".format(img_in))
+        coords, state = ps2.traffic_light_detection(tl, radii_range)
+
+        print 'Cords for image name: {}.png are {} , state is: {}'.format(img_in, coords, state)
+
+        img_out = draw_tl_center(tl, coords, state)
+        cv2.imwrite("output/{}.png".format(label), img_out)
+
+
+def part_1_scenes_test():
+    input_images = ['scene_tl_test',
+                    'tl_green_299_287_background',
+                    'tl_red_199_137_background',
+                    'tl_yellow_199_237_background',
+                    ]
+    output_labels = ['scene_tl_test_out',
+                     'tl_green_299_287_background_out',
+                     'tl_red_199_137_background_out',
+                     'tl_yellow_199_237_background_out'
+                     ]
+
+    # Define a radii range, you may define a smaller range based on your
+    # observations.
+    radii_range = range(10, 30, 1)
+
+    for img_in, label in zip(input_images, output_labels):
+        tl = cv2.imread("input_images/test_images/{}.png".format(img_in))
+        coords, state = ps2.traffic_light_detection(tl, radii_range)
+
+        print 'Cords for image name: {}.png are {} , state is: {}'.format(img_in, coords, state)
+
+        img_out = draw_tl_center(tl, coords, state)
+        cv2.imwrite("output/{}.png".format(label), img_out)
+
+
 def part_2():
 
-    input_images = ['scene_dne_1', 'scene_stp_1', 'scene_constr_1',
-                    'scene_wrng_1', 'scene_yld_1']
+    input_images = ['scene_dne_1',
+                    'scene_stp_1',
+                    'scene_constr_1',
+                    'scene_wrng_1',
+                    'scene_yld_1'
+                    ]
 
-    output_labels = ['ps2-2-a-1', 'ps2-2-a-2', 'ps2-2-a-3', 'ps2-2-a-4',
-                     'ps2-2-a-5']
+    output_labels = ['ps2-2-a-1',
+                     'ps2-2-a-2',
+                     'ps2-2-a-3',
+                     'ps2-2-a-4',
+                     'ps2-2-a-5'
+                     ]
 
-    sign_fns = [ps2.do_not_enter_sign_detection, ps2.stop_sign_detection,
-                ps2.construction_sign_detection, ps2.warning_sign_detection,
-                ps2.yield_sign_detection]
+    sign_fns = [ps2.do_not_enter_sign_detection,
+                ps2.stop_sign_detection,
+                ps2.construction_sign_detection,
+                ps2.warning_sign_detection,
+                ps2.yield_sign_detection
+                ]
 
-    sign_labels = ['no_entry', 'stop', 'construction', 'warning', 'yield']
+    sign_labels = ['no_entry',
+                   'stop',
+                   'construction',
+                   'warning',
+                   'yield'
+                   ]
 
     for img_in, label, fn, name in zip(input_images, output_labels, sign_fns,
                                        sign_labels):
@@ -111,8 +219,14 @@ def part_2():
 
 def part_3():
 
-    input_images = ['scene_some_signs', 'scene_all_signs']
-    output_labels = ['ps2-3-a-1', 'ps2-3-a-2']
+    input_images = [
+                    'scene_some_signs',
+                    'scene_all_signs'
+                    ]
+    output_labels = [
+                    'ps2-3-a-1',
+                     'ps2-3-a-2'
+                     ]
 
     for img_in, label in zip(input_images, output_labels):
 
@@ -124,8 +238,14 @@ def part_3():
 
 
 def part_4():
-    input_images = ['scene_some_signs_noisy', 'scene_all_signs_noisy']
-    output_labels = ['ps2-4-a-1', 'ps2-4-a-2']
+    input_images = [
+        'scene_some_signs_noisy',
+        'scene_all_signs_noisy'
+    ]
+    output_labels = [
+                     'ps2-4-a-1',
+                     'ps2-4-a-2'
+                    ]
 
     for img_in, label in zip(input_images, output_labels):
         scene = cv2.imread("input_images/{}.png".format(img_in))
@@ -136,13 +256,12 @@ def part_4():
 
 
 def part_5a():
-    input_images = ['img-5-a-1', 'img-5-a-2', 'img-5-a-3']
+    input_images = ['img-5-a-1', 'img-5-a-2' , 'img-5-a-3']
     output_labels = ['ps2-5-a-1', 'ps2-5-a-2', 'ps2-5-a-3']
 
     for img_in, label in zip(input_images, output_labels):
         scene = cv2.imread("input_images/{}.png".format(img_in))
         coords = ps2.traffic_sign_detection_challenge(scene)
-
         img_out = mark_traffic_signs(scene, coords)
         cv2.imwrite("output/{}.png".format(label), img_out)
 
@@ -158,10 +277,18 @@ def part_5b():
         img_out = mark_traffic_signs(scene, coords)
         cv2.imwrite("output/{}.png".format(label), img_out)
 
+
 if __name__ == '__main__':
+
     part_1()
+    # part_1_tests()
+    # part_1_scenes_test()
     part_2()
+    # img_name = 'yield_173_358_blank'
+    # sign_img = cv2.imread("input_images/test_images/{}.png".format(img_name))
+    # ps2.yield_sign_detection(sign_img)
     part_3()
     part_4()
     part_5a()
     part_5b()
+
