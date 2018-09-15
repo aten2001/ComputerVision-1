@@ -69,7 +69,10 @@ def calculate_line_length(x1, y1, x2, y2):
 
 
 def calculate_slope(x1, y1, x2, y2):
-    return abs((y2 - y1) / (x2 - x1))
+    if (x2 - x1) > 0:
+        return abs((y2 - y1) / (x2 - x1))
+    else:
+        return 0
 
 
 def circles_touching(x1, y1, x2, y2, r1, r2):
@@ -136,19 +139,27 @@ def calculate_min_max_values(lines):
 
 def red_masking(img, stop_mask=False):
     hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+
+    # display_img(hsv_img, 'Red HSV')
     # lower mask
     lower_red = np.array([0, 100, 100])
     upper_red = np.array([10, 255, 255])
     red_mask = cv2.inRange(hsv_img, lower_red, upper_red)
-    # display_img(red_mask, 'The Red Mask')
-    if not stop_mask:
+    # display_img(red_mask, 'The Red Mask Basic')
+    # if not stop_mask:
         # make another red mask for border removal of stop sign.
-        lower_red = np.array([160, 100, 100])
-        upper_red = np.array([179, 255, 255])
-        red_mask_2 = cv2.inRange(hsv_img, lower_red, upper_red)
-        red_mask = red_mask - red_mask_2
+    lower_red = np.array([160, 100, 100])
+    upper_red = np.array([179, 255, 255])
+    red_mask_2 = cv2.inRange(hsv_img, lower_red, upper_red)
+    red_mask = red_mask - red_mask_2
+    # display_img(red_mask, 'The Red Mask Advanced')
 
     red = cv2.bitwise_and(img, img, mask=red_mask)
+    # display_img(red, 'Red Image Mask before removal')
+    # print np.unique(red.reshape(-1, red.shape[2]), axis=0)
+    # print np.unique(red[:, :, 2])
+
+
     zero = 0
     h, s, v = red[:, :, 0], red[:, :, 1], red[:, :, 2]
     # the yield sign has a red of 204, stop is 255
@@ -157,7 +168,10 @@ def red_masking(img, stop_mask=False):
     else:
         mask = (0 <= h) & (0 <= s) & (215 >= v)
 
+    # display_img(red, 'Red Image Mask after removal')
     red[:, :, :3][mask] = [zero, zero, zero]
+
+
     return red
 
 
@@ -258,7 +272,7 @@ def traffic_light_detection(img_in, radii_range, noisy_image=False, max_x_offset
     if noisy_image:
         circles = hough_circles(img, 1.55, min_dist, 20, 15, min_radii, max_radii)
     else:
-        circles = hough_circles(img, 1.15, min_dist, 30, 20, min_radii, max_radii)
+        circles = hough_circles(img, 1.125, min_dist, 30, 20, min_radii, max_radii)
 
     if circles is None:
         return (0, 0), None
@@ -269,7 +283,7 @@ def traffic_light_detection(img_in, radii_range, noisy_image=False, max_x_offset
         circles = np.uint16(np.around(circles))
 
     if len(circles) < 3:
-        return (0, 0), None
+        return (1000, 1000), None
     else:  # If there are more than 3 circles found, eliminate the outliers that shouldn't be detected.
         # sort the circles first by x, then by Radius value, then by Y value.
         circles = sorted(circles, key=lambda c: (c[0], c[2], c[1]))
@@ -315,10 +329,16 @@ def traffic_light_detection(img_in, radii_range, noisy_image=False, max_x_offset
         red_color = np.array([0, 0, 255])
         green_color = np.array([0, 255, 0])
 
+        # stop for false positive labels.
+        if img_in[yellow_row, yellow_col][0] > 10:
+            return (None, None), None
+
         if (img_in[red_row, red_col] == red_color).all():
             state = 'red'
         elif (img_in[green_row, green_col] == green_color).all():
             state = 'green'
+
+        # print 'Color of TL midpoint is {}'.format(img_in[yellow_row, yellow_col])
 
         return cords, state
 
@@ -368,6 +388,10 @@ def yield_sign_detection(img_in):
         line_lengths = np.array([calculate_line_length(x[0], x[1], x[2], x[3]) for x in lines])
         # the lines with a slope of 2 are the ones that will be found for this sign. Get these lines and store them.
         sloped_idx = np.where(line_slopes == 2)[0]
+
+        if len(sloped_idx) < 2:
+            return None, None
+
         # loop over the valid slops and figure out max lenght
         max_length = 0
         for sid in sloped_idx:
@@ -539,16 +563,17 @@ def do_not_enter_sign_detection(img_in):
         (x,y) tuple of the coordinates of the center of the sign.
     """
     img_in = img_in.copy()
-    img = process_base_image(img_in, (7, 7))
+    img = red_masking(img_in)
+    # display_img(img, 'DNE_RED')
+    img = process_base_image(img, (7, 7))
     # Assumption made that a DNE sign will always have at least a
     # radius of 5.
-    min_radius = 5
-    max_radius = img.shape[1]
-
-    circles = hough_circles(img, 1, min_radius, 30, 30, min_radius, max_radius)
-    circles = np.uint16(np.around(circles))
+    min_radius = 15
+    max_radius = np.int(img.shape[1] / 2)
+    circles = hough_circles(img, 1, 10, 30, 30, min_radius, max_radius)
 
     if circles is not None:
+        circles = np.uint16(np.around(circles))
         circles = circles[0, :]
         # since multiple circles might be found, the correct one
         circle_mid_colors = [pixel_color(img, x[0], x[1]) for x in circles]
@@ -625,6 +650,8 @@ def traffic_sign_detection(img_in, light_size=(3, 30), light_offset = 5):
     if x is not None:
         dict['no_entry'] = (x, y)
 
+    # print 'done finding signs'
+    # print dict
     return dict
 
 
@@ -688,6 +715,8 @@ def traffic_sign_detection_challenge(img_in):
               These are just example values and may not represent a
               valid scene.
     """
-    raise NotImplementedError
+    img = img_in.copy()
+    clean_picture = cv2.bilateralFilter(img, 9, 75, 75)
+    return traffic_sign_detection(clean_picture, light_size=(10, 30), light_offset=10)
 
 

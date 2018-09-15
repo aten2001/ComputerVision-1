@@ -43,7 +43,12 @@ def draw_tl_center(image_in, center, state):
     cv2.circle(img, (center[0], center[1]), 4, (0, 0, 0), -3)
     # add the state
     disp_str = '(({}, {} ), {} )'.format(center[0], center[1], state)
-    cv2.putText(img, disp_str, (100, 100), cv2.FONT_HERSHEY_PLAIN, 1, (0, 0, 0), 2)
+    # calc label position
+    if center[0] + len(disp_str)*10 > image_in.shape[1]:
+        mid_label = center[0] - len(disp_str) * 10 - 50
+    else:
+        mid_label = center[0] + 20
+    cv2.putText(img, disp_str, (mid_label, center[1]), cv2.FONT_HERSHEY_PLAIN, 1, (0, 0, 0), 2)
     return img
 
 
@@ -71,14 +76,15 @@ def mark_traffic_signs(image_in, signs_dict):
     """
     img = image_in.copy()
 
-    print signs_dict
-
-    # loop over the dictionary, add all KVP as lables and mid points.
+    # loop over the dictionary, add all KVP as labels and mid points.
     for key, value in signs_dict.iteritems():
         cv2.circle(img, value, 4, (0, 0, 0), -3)
-        # each character is about 10 pixels, shift to fit
-        word_width = 10 * len(key)
+        # add the cords to the key to print.
+        label = key
+        cords = '({}, {})'.format(value[0], value[1])
 
+        # each character is about 10 pixels, shift to fit
+        word_width = 10 * len(label)
         # place the text below the midpoint value
         key_offset = value[0] - word_width / 2
 
@@ -86,7 +92,8 @@ def mark_traffic_signs(image_in, signs_dict):
         # print 'key offset is: {}'.format(key_offset)
         # print 'Word with is: {}'.format(word_width)
         # print 'With words edge will be at {} '.format(key_offset + (word_width/2))
-        cv2.putText(img, key, (key_offset, value[1] + 20), cv2.FONT_HERSHEY_PLAIN, 1, (0, 0, 0), 2)
+        cv2.putText(img, label, (key_offset, value[1] + 20), cv2.FONT_HERSHEY_PLAIN, 1, (0, 0, 0), 2)
+        cv2.putText(img, cords, (key_offset, value[1] + 40), cv2.FONT_HERSHEY_PLAIN, 1, (0, 0, 0), 2)
 
     return img
 
@@ -249,7 +256,7 @@ def part_4():
 
 
 def part_5a():
-    input_images = ['img-5-a-1', 'img-5-a-2', 'img-5-a-3']
+    input_images = ['img-5-a-1', 'img-5-a-2' , 'img-5-a-3']
     output_labels = ['ps2-5-a-1', 'ps2-5-a-2', 'ps2-5-a-3']
 
     for img_in, label in zip(input_images, output_labels):
@@ -282,6 +289,6 @@ if __name__ == '__main__':
     # ps2.yield_sign_detection(sign_img)
     part_3()
     part_4()
-    # part_5a()
-    # part_5b()
+    part_5a()
+    part_5b()
 
