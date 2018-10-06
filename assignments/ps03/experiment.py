@@ -7,6 +7,7 @@ implementation and output images so you can verify your results.
 import os
 import cv2
 import numpy as np
+import time
 
 import ps3
 
@@ -43,14 +44,11 @@ def helper_for_part_4_and_5(video_name, fps, frame_ids, output_prefix,
 
     while image is not None:
 
-        print "Processing fame {}".format(frame_num)
-
         markers = ps3.find_markers(image, template)
 
         if is_part5:
             homography = ps3.find_four_point_transform(src_points, markers)
             image = ps3.project_imageA_onto_imageB(advert, image, homography)
-
         else:
 
             for marker in markers:
@@ -85,7 +83,8 @@ def mp4_video_writer(filename, frame_size, fps=20):
     Returns:
         VideoWriter: Instance of VideoWriter ready for writing
     """
-    fourcc = cv2.cv.CV_FOURCC(*'MP4V')
+    fourcc = cv2.cv.CV_FOURCC(*'MPEG')
+    filename = filename.replace('mp4', 'mpeg')
     return cv2.VideoWriter(filename, fourcc, fps, frame_size)
 
 
@@ -162,7 +161,10 @@ def part_3():
 
     print "\nPart 3:"
 
-    input_images = ['ps3-3-a_base.jpg', 'ps3-3-b_base.jpg', 'ps3-3-c_base.jpg']
+    input_images = ['ps3-3-a_base.jpg',
+                    'ps3-3-b_base.jpg',
+                    'ps3-3-c_base.jpg'
+                    ]
     output_images = ['ps3-3-a-1.png', 'ps3-3-a-2.png', 'ps3-3-a-3.png']
 
     # Advertisement image
@@ -279,4 +281,4 @@ if __name__ == '__main__':
     part_4_b()
     part_5_a()
     part_5_b()
-    part_6()
+    # part_6()
