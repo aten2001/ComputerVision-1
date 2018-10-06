@@ -1,0 +1,34 @@
+imgSource = imageA.copy()
+    imgDst = imageB.copy()
+    # to have the polygon area make sense, need to re-arrange the markers to go from
+    # top left, top right, bottom right, bottom left. Just as if you were drawing the shape.
+
+    # to avoid doing a bunch of loops, create an array of all valid X,Y cords that we need to transform in the image
+    # markers = get_corners_list(imgDst)
+
+    markers = find_markers(imageB)
+    markers = np.int32(markers)
+    markers = [markers[0], markers[2], markers[3], markers[1]]
+    markers = [[np.int32(marker[0]), np.int32(marker[1])] for marker in markers]
+
+    cv2.fillPoly(grayim2, np.array([markers]), 255, 8, 0)
+
+    true_dst = imgDst
+    src = imgSource
+    H = np.linalg.inv(homography)
+    # create indices of the destination image and linearize them
+    h, w = true_dst.shape[:2]
+    indy, indx = np.indices((h, w), dtype=np.float32)
+    lin_homg_ind = np.array([indx.ravel(), indy.ravel(), np.ones_like(indx).ravel()])
+
+    # warp the coordinates of src to those of true_dst
+    map_ind = H.dot(lin_homg_ind)
+    map_x, map_y = map_ind[:-1] / map_ind[-1]  # ensure homogeneity
+    map_x = map_x.reshape(h, w).astype(np.float32)
+    map_y = map_y.reshape(h, w).astype(np.float32)
+
+    # remap!
+    dst = cv2.remap(src, map_x, map_y, cv2.INTER_LINEAR)
+    blended = cv2.addWeighted(true_dst, 1.0, dst, 1.0, 0)
+    cv2.imshow('blended.png', blended)
+    cv2.waitKey()
