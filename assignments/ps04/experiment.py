@@ -68,8 +68,13 @@ def scale_u_and_v(u, v, level, pyr):
                              pyr[0].shape
     """
 
-    # TODO: Your code here
-    raise NotImplementedError
+    for i in range(level-1, -1, -1 ):
+        u = 2.0 * ps4.expand_image(u)
+        v = 2.0 * ps4.expand_image(v)
+
+    h, w = pyr[0].shape
+    return u[:h, :w], v[:h, :w]
+
 
 
 def part_1a():
@@ -82,7 +87,7 @@ def part_1a():
                                           'ShiftR5U5.png'), 0) / 255.
 
     # Optional: smooth the images if LK doesn't work well on raw images
-    k_size = 21  # TODO: Select a kernel size
+    k_size = 19  # TODO: Select a kernel size
     k_type = "uniform"  # TODO: Select a kernel type
     sigma = 0.5  # TODO: Select a sigma value if you are using a gaussian kernel
     u, v = ps4.optic_flow_lk(shift_0, shift_r2, k_size, k_type, sigma)
@@ -93,8 +98,7 @@ def part_1a():
 
     # Now let's try with ShiftR5U5. You may want to try smoothing the
     # input images first.
-
-    k_size = 45 # TODO: Select a kernel size
+    k_size = 27
     # k_type = ""  # TODO: Select a kernel type
     # sigma = 0  # TODO: Select a sigma value if you are using a gaussian kernel
     u, v = ps4.optic_flow_lk(shift_0, shift_r5_u5, k_size, k_type, sigma)
@@ -102,6 +106,11 @@ def part_1a():
     # Flow image
     u_v = quiver(u, v, scale=3, stride=10)
     cv2.imwrite(os.path.join(output_dir, "ps4-1-a-2.png"), u_v)
+
+
+# used for trackbar tuning
+def nothing(x):
+    pass
 
 
 def part_1b():
@@ -134,7 +143,38 @@ def part_1b():
     shift_r40 = cv2.imread(os.path.join(input_dir, 'TestSeq',
                                         'ShiftR40.png'), 0) / 255.
 
-    raise NotImplementedError
+    k_type = 'uniform'
+    sigma = 0.5
+
+    # k_size = "kSize"
+    # window = "Params"
+    # cv2.namedWindow(window)
+    # cv2.createTrackbar(k_size, window, 1, 100, nothing)
+    # while 1:
+    #     k = cv2.waitKey(1) & 0xFF
+    #     if k == 27:
+    #         break
+    #
+    #     k_size = cv2.getTrackbarPos('kSize', 'Params')
+    #     u, v = ps4.optic_flow_lk(shift_0, shift_r20, k_size, k_type, sigma)
+    #     u_v = quiver(u, v, scale=3, stride=10)
+    #     cv2.imshow("Params", u_v)
+
+    # change k size per thing to see impact.
+    k_size = 41
+    u, v = ps4.optic_flow_lk(shift_0, shift_r10, k_size, k_type, sigma)
+    u_v = quiver(u, v, scale=3, stride=10)
+    cv2.imwrite(os.path.join(output_dir, "ps4-1-b-1.png"), u_v)
+
+    k_size = 63
+    u, v = ps4.optic_flow_lk(shift_0, shift_r20, k_size, k_type, sigma)
+    u_v = quiver(u, v, scale=3, stride=10)
+    cv2.imwrite(os.path.join(output_dir, "ps4-1-b-2.png"), u_v)
+
+    k_size = 63
+    u, v = ps4.optic_flow_lk(shift_0, shift_r40, k_size, k_type, sigma)
+    u_v = quiver(u, v, scale=3, stride=10)
+    cv2.imwrite(os.path.join(output_dir, "ps4-1-b-3.png"), u_v)
 
 
 def part_2():
@@ -163,13 +203,42 @@ def part_3a_1():
     yos_img_02 = cv2.imread(
         os.path.join(input_dir, 'DataSeq1', 'yos_img_02.jpg'), 0) / 255.
 
-    levels = 1  # Define the number of pyramid levels
+    levels = 3 # Define the number of pyramid levels
     yos_img_01_g_pyr = ps4.gaussian_pyramid(yos_img_01, levels)
     yos_img_02_g_pyr = ps4.gaussian_pyramid(yos_img_02, levels)
 
+    # k_size = "kSize"
+    # window = "Params"
+    # cv2.namedWindow(window)
+    # cv2.createTrackbar(k_size, window, 1, 100, nothing)
+    # while 1:
+    #     k = cv2.waitKey(1) & 0xFF
+    #     if k == 27:
+    #         break
+    #
+    #     level_id = 0  # TODO: Select the level number (or id) you wish to use
+    #     # k_size = 11  # TODO: Select a kernel size
+    #     k_size = cv2.getTrackbarPos('kSize', 'Params')
+    #     k_type = 'uniform'  # TODO: Select a kernel type
+    #     sigma = 0  # TODO: Select a sigma value if you are using a gaussian kernel
+    #     u, v = ps4.optic_flow_lk(yos_img_01_g_pyr[level_id],
+    #                              yos_img_02_g_pyr[level_id],
+    #                              k_size, k_type, sigma)
+    #
+    #     u, v = scale_u_and_v(u, v, level_id, yos_img_02_g_pyr)
+    #
+    #     interpolation = cv2.INTER_CUBIC  # You may try different values
+    #     border_mode = cv2.BORDER_REFLECT101  # You may try different values
+    #     yos_img_02_warped = ps4.warp(yos_img_02, u, v, interpolation, border_mode)
+    #
+    #     diff_yos_img_01_02 = yos_img_01 - yos_img_02_warped
+    #
+    #     cv2.imshow("Params", diff_yos_img_01_02)
+
+
     level_id = 0  # TODO: Select the level number (or id) you wish to use
-    k_size = 0  # TODO: Select a kernel size
-    k_type = ""  # TODO: Select a kernel type
+    k_size = 23  # TODO: Select a kernel size
+    k_type = 'uniform'  # TODO: Select a kernel type
     sigma = 0  # TODO: Select a sigma value if you are using a gaussian kernel
     u, v = ps4.optic_flow_lk(yos_img_01_g_pyr[level_id],
                              yos_img_02_g_pyr[level_id],
@@ -183,7 +252,7 @@ def part_3a_1():
 
     diff_yos_img_01_02 = yos_img_01 - yos_img_02_warped
     cv2.imwrite(os.path.join(output_dir, "ps4-3-a-1.png"),
-                ps4.normalize_and_scale(diff_yos_img))
+                ps4.normalize_and_scale(diff_yos_img_01_02))
 
 
 def part_3a_2():
@@ -315,10 +384,10 @@ def part_6():
 
 
 if __name__ == "__main__":
-    part_1a()
+    # part_1a()
     # part_1b()
     # part_2()
-    # part_3a_1()
+    part_3a_1()
     # part_3a_2()
     # part_4a()
     # part_4b()

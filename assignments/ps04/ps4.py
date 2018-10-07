@@ -70,10 +70,6 @@ def gradient_y(image):
     return sobel_y
 
 
-def gradient_t(image1, image2):
-    return image2 - image1
-
-
 def optic_flow_lk(img_a, img_b, k_size, k_type, sigma=1):
     """Computes optic flow using the Lucas-Kanade method.
 
@@ -113,64 +109,70 @@ def optic_flow_lk(img_a, img_b, k_size, k_type, sigma=1):
                              Y-axis, same size and type as U.
     """
 
+    # fix to make sure the kernel size is an odd number.
+    if k_size % 2 == 0 and k_size > 2:
+        k_size = k_size - 1
+
+    # copy images for use.
     image_a = img_a.copy()
     image_b = img_b.copy()
-    image_a = cv2.GaussianBlur(image_a, (5, 5), 0)
-    image_b = cv2.GaussianBlur(image_b, (5, 5), 0)
-
-    temporal = image_b - image_a
-    gradient_x_a = gradient_x(image_a)
-    gradient_y_a = gradient_y(image_a)
-
-
-    print 'K Type is {}'.format(k_type)
-    print 'K Size is {}'.format(k_size)
-    # perform blurring based on k_type to get the weighted sums. box filter or a smoothing
-    # filter. Auto grader will use 'uniform'.
-    # gx_gx
-    # gx_gy
-    # gy_gx
-    # gy_gy
 
     if k_type == 'uniform':
-        k = np.ones((k_size, k_size)) / np.float64(k_size ** 2)
-        gx_gx = cv2.filter2D(gradient_x_a * gradient_x_a, ddepth=-1, kernel=k)  # a
-        gy_gy = cv2.filter2D(gradient_y_a * gradient_y_a, ddepth=-1, kernel=k) # d
-        gx_gy = cv2.filter2D(gradient_x_a * gradient_y_a, ddepth=-1, kernel=k) # b
-        gy_gx = cv2.filter2D(gradient_y_a * gradient_x_a, ddepth=-1, kernel=k) # c
-
-        # temporal gradients.
-        gx_gt = cv2.filter2D(gradient_x_a * temporal, ddepth=-1, kernel=k)
-        gy_gt = cv2.filter2D(gradient_y_a * temporal, ddepth=-1, kernel=k)
+        blur_kernel = (k_size, k_size)
+        image_a = cv2.blur(image_a, blur_kernel)
+        image_b = cv2.blur(image_b, blur_kernel)
     else:
-        gx_gx = cv2.GaussianBlur(gradient_x_a * gradient_x_a, (k_size, k_size), sigma)  # a
-        gy_gy = cv2.GaussianBlur(gradient_y_a * gradient_y_a, (k_size, k_size), sigma)  # d
-        gx_gy = cv2.GaussianBlur(gradient_x_a * gradient_y_a, (k_size, k_size), sigma)  # b
-        gy_gx = cv2.GaussianBlur(gradient_y_a * gradient_x_a, (k_size, k_size), sigma)  # c
-        # temporal gradients.
-        gx_gt = cv2.GaussianBlur(gradient_x_a * temporal, (k_size, k_size), sigma)
-        gy_gt = cv2.GaussianBlur(gradient_y_a * temporal, (k_size, k_size), sigma)
+        blur_kernel = cv2.getGaussianKernel(k_size=k_size, sigma=sigma)
+        image_a = cv2.GaussianBlur(image_a, blur_kernel, sigma)
+        image_b = cv2.GaussianBlur(image_b, blur_kernel, sigma)
 
-    # perform some transposes to get proper shapes of matrix. a 2x2 matrix is needed.
-    a_tr_a = np.array([
-        gx_gx.flatten(), gx_gy.flatten(),
-        gy_gx.flatten(), gy_gy.flatten()]).T.reshape(-1, 2, 2)
+    k = np.ones((k_size, k_size)) / (k_size ** 2)
+    # base gradients.
+    gx = gradient_x(image_a)
+    gy = gradient_y(image_a)
+    gt = image_b - image_a
 
-    # singular matrix check.
+    # calculate the weighted gradients using blurs to prevent having to loop. Makes this much easier to manage.
+    if k_type == 'uniform':
+        gx_x = cv2.filter2D(gx * gx, ddepth=-1, kernel=k)
+        gy_y = cv2.filter2D(gy * gy, ddepth=-1, kernel=k)
+        gx_y = cv2.filter2D(gx * gy, ddepth=-1, kernel=k)
+        gy_x = cv2.filter2D(gy * gx, ddepth=-1, kernel=k)
+        gx_t = cv2.filter2D(gx * gt, ddepth=-1, kernel=k)
+        gy_t = cv2.filter2D(gy * gt, ddepth=-1, kernel=k)
+    else:
+        gx_x = cv2.GaussianBlur(gx * gx, blur_kernel, sigma)
+        gy_y = cv2.GaussianBlur(gy * gy, blur_kernel, sigma)
+        gx_y = cv2.GaussianBlur(gx * gy, blur_kernel, sigma)
+        gy_x = cv2.GaussianBlur(gy * gx, blur_kernel, sigma)
+        gx_t = cv2.GaussianBlur(gx * gt, blur_kernel, sigma)
+        gy_t = cv2.GaussianBlur(gy * gt, blur_kernel, sigma)
+
+    # create a new matrix from the gradients in the x, the xy, the yx, and the yy directions. To allow the use
+    # of matrix multiplier provided by numpy, we flatten, then transpose to the correct shape of a 2x2 matrix.
+    # np.matmul states that if either argument is N-D, N > 2, it is treated as a stack of matrices. We want a stack
+    # of 2x2 matrices. residing in the last two indexes and broadcast accordingly.
+
+    image_a_transform = np.array([
+        gx_x.flatten(), gx_y.flatten(),
+        gy_x.flatten(), gy_y.flatten()
+    ]).T.reshape(-1, 2, 2)  # transpose and take from last a 2 x 2 matrix in the reshape.
+
+    # 2 x 1 matrix for matmul
+    time_transform = np.array([
+        -gx_t.flatten(),
+        -gy_t.flatten()
+    ]).T.reshape(-1, 2, 1)
+
     try:
-        i_a_tr_a = np.linalg.inv(a_tr_a)
+        image_a_transform_inv = np.linalg.inv(image_a_transform)
     except np.linalg.linalg.LinAlgError:
+        # if this is a singular matrix (happens when the shift is the same as the original)
         return np.zeros(image_a.shape), np.zeros(image_a.shape)
 
-
-    # need 2 x 1. On the temporal shifts, need to swap x,y dir so do an inverse.
-    temporal_t = np.array([-gx_gt.flatten(), -gy_gt.flatten()]).T.reshape(-1, 2, 1)
-
-    # perform matrix multiplication.
-    shifts = np.matmul(i_a_tr_a, temporal_t)
-    U = shifts[:, 0, 0].reshape(image_a.shape)
-    V = shifts[:, 1, 0].reshape(image_b.shape)
-
+    transform = np.matmul(image_a_transform_inv, time_transform)
+    U = transform[:, 0, 0].reshape(image_a.shape)  # get hte U matrix
+    V = transform[:, 1, 0].reshape(image_a.shape)  # get the V
     return U, V
 
 
@@ -199,7 +201,15 @@ def reduce_image(image):
                      input image.
     """
 
-    raise NotImplementedError
+    image = image.copy()
+    # only select odd columns out.
+    image = image.copy()
+    # 1/16 4/16  6/16 4/12 1/16
+    # k = np.array([1, 4, 6, 4, 1]) / 16.0
+    k = np.array([np.array([1, 4, 6, 4, 1]) / 16.0])
+    r_k = np.dot(k.T, k)
+    filter_img = cv2.filter2D(image, -1, r_k)
+    return filter_img[::2, ::2]
 
 
 def gaussian_pyramid(image, levels):
@@ -222,8 +232,12 @@ def gaussian_pyramid(image, levels):
     Returns:
         list: Gaussian pyramid, list of numpy.arrays.
     """
-
-    raise NotImplementedError
+    image = image.copy()
+    images = [image]   # the list for the pyramid. has base image first.
+    for i in range(levels-1):
+        image = reduce_image(image)  # reduce it then append. n times.
+        images.append(image)
+    return images
 
 
 def create_combined_img(img_list):
@@ -245,7 +259,19 @@ def create_combined_img(img_list):
                      from left to right.
     """
 
-    raise NotImplementedError
+    # height is constant. image will never be larger than the first.
+    h = img_list[0].shape[0]
+    # width will be sum of all images size in the x direction
+    w = sum([i.shape[1] for i in img_list])
+
+    output = np.zeros((h, w))  # empty image.
+    curr_x = 0
+    for image in img_list:
+        ih, iw = image.shape  # use this to determine where to place.
+        output[: ih, curr_x: curr_x + iw] = normalize_and_scale(image)
+        curr_x += iw
+
+    return output
 
 
 def expand_image(image):
@@ -268,8 +294,18 @@ def expand_image(image):
         numpy.array: same type as 'image' with the doubled height and
                      width.
     """
+    image = image.copy()
+    dr = 2 * image.shape[0]  # double rows.
+    dc = 2 * image.shape[1]  # double columns
 
-    raise NotImplementedError
+    output = np.zeros((dr, dc))
+    # # filling alternate rows
+    output[::2, ::2] = image
+    # 2/16, 8/16, 12/16, 8/16, 2/16
+    k = np.array([np.array([2, 8, 12, 8, 2]) / 16.0])
+    r_k = np.dot(k.T, k)
+    output = cv2.filter2D(output, -1, r_k)
+    return output
 
 
 def laplacian_pyramid(g_pyr):
@@ -283,8 +319,18 @@ def laplacian_pyramid(g_pyr):
     Returns:
         list: Laplacian pyramid, with l_pyr[-1] = g_pyr[-1].
     """
+    images = []
+    for idx in range(len(g_pyr)):
+        if idx == len(g_pyr) - 1:
+            image = g_pyr[idx]
+        else:
+            h = g_pyr[idx].shape[0]
+            w = g_pyr[idx].shape[1]
+            # expand the image that is found to the next images size.
+            image = g_pyr[idx] - expand_image(g_pyr[idx + 1])[:h, :w]
+        images.append(image)
 
-    raise NotImplementedError
+    return images
 
 
 def warp(image, U, V, interpolation, border_mode):
@@ -311,7 +357,22 @@ def warp(image, U, V, interpolation, border_mode):
                      warped[y, x] = image[y + V[y, x], x + U[y, x]]
     """
 
-    raise NotImplementedError
+    image = image.copy()
+
+    # displacements in x-axis and y-axis as U and V for image as float32
+    U = U.astype(np.float32)
+    V = V.astype(np.float32)
+
+    mesh_x, mesh_y = np.meshgrid(range(image.shape[1]), range(image.shape[0]))
+    # meshgrid for image as float32
+    mesh_x = mesh_x.astype(np.float32)
+    mesh_y = mesh_y.astype(np.float32)
+    mesh_x += U
+    mesh_y += V
+
+    output = cv2.remap(src=image, map1=mesh_x, map2=mesh_y, interpolation=interpolation, borderMode=border_mode)
+    return output
+
 
 
 def hierarchical_lk(img_a, img_b, levels, k_size, k_type, sigma, interpolation,
