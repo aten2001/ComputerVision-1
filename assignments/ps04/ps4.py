@@ -2,8 +2,6 @@
 
 import numpy as np
 import cv2
-import os
-import itertools
 
 
 # Utility function
@@ -117,15 +115,6 @@ def optic_flow_lk(img_a, img_b, k_size, k_type, sigma=1):
     image_a = img_a.copy()
     image_b = img_b.copy()
 
-    if k_type == 'uniform':
-        blur_kernel = (k_size, k_size)
-        image_a = cv2.blur(image_a, blur_kernel)
-        image_b = cv2.blur(image_b, blur_kernel)
-    else:
-        blur_kernel = cv2.getGaussianKernel(k_size=k_size, sigma=sigma)
-        image_a = cv2.GaussianBlur(image_a, blur_kernel, sigma)
-        image_b = cv2.GaussianBlur(image_b, blur_kernel, sigma)
-
     k = np.ones((k_size, k_size)) / (k_size ** 2)
     # base gradients.
     gx = gradient_x(image_a)
@@ -141,6 +130,7 @@ def optic_flow_lk(img_a, img_b, k_size, k_type, sigma=1):
         gx_t = cv2.filter2D(gx * gt, ddepth=-1, kernel=k)
         gy_t = cv2.filter2D(gy * gt, ddepth=-1, kernel=k)
     else:
+        blur_kernel = (k_size, k_size)
         gx_x = cv2.GaussianBlur(gx * gx, blur_kernel, sigma)
         gy_y = cv2.GaussianBlur(gy * gy, blur_kernel, sigma)
         gx_y = cv2.GaussianBlur(gx * gy, blur_kernel, sigma)
@@ -363,14 +353,11 @@ def warp(image, U, V, interpolation, border_mode):
     U = U.astype(np.float32)
     V = V.astype(np.float32)
 
-    mesh_x, mesh_y = np.meshgrid(range(image.shape[1]), range(image.shape[0]))
-    # meshgrid for image as float32
-    mesh_x = mesh_x.astype(np.float32)
-    mesh_y = mesh_y.astype(np.float32)
-    mesh_x += U
-    mesh_y += V
+    new_x, new_y = np.meshgrid(range(image.shape[1]), range(image.shape[0]))
+    new_x = new_x.astype(np.float32) + U
+    new_y = new_y.astype(np.float32) + V
 
-    output = cv2.remap(src=image, map1=mesh_x, map2=mesh_y, interpolation=interpolation, borderMode=border_mode)
+    output = cv2.remap(src=image, map1=new_x, map2=new_y, interpolation=interpolation, borderMode=border_mode)
     return output
 
 
@@ -403,4 +390,30 @@ def hierarchical_lk(img_a, img_b, levels, k_size, k_type, sigma, interpolation,
                              same size and type as U.
     """
 
-    raise NotImplementedError
+    image_a = img_a.copy()
+    image_b = img_b.copy()
+
+    gaussian_pyramid_a = gaussian_pyramid(image_a, levels)
+    gaussian_pyramid_b = gaussian_pyramid(image_b, levels)
+
+    # init U and V
+    U = np.zeros(gaussian_pyramid_a[-1].shape)
+    V = np.zeros(gaussian_pyramid_a[-1].shape)
+
+    for aa, bb in reversed(zip(gaussian_pyramid_a, gaussian_pyramid_b)):
+        h, w = aa.shape
+        # expand the flow field and double it to get the the next image.
+        U = (expand_image(U) * 2)[:h, :w]
+        V = (expand_image(V) * 2)[:h, :w]
+        # warp it
+        c = warp(bb, U, V, interpolation=interpolation, border_mode=border_mode)
+
+        # perform Lucas Kanade
+        nx, ny = optic_flow_lk(aa, c, k_size, k_type, sigma)
+
+        # add to the orignal flow.
+        U = U + nx
+        V = V + ny
+
+    return U, V
+
