@@ -18,14 +18,42 @@ class KalmanFilter(object):
             Q (numpy.array): Process noise array.
             R (numpy.array): Measurement noise array.
         """
+        # state is x, y cords and velocity. acceleration is not used.
         self.state = np.array([init_x, init_y, 0., 0.])  # state
-        raise NotImplementedError
+
+        self.state = self.state.reshape(4, 1)  # reshape to be a single column, 4 rows.
+
+        # initialize the covariance matrix.
+        self.covariance = np.matrix(np.diag([1.0, 1.0, 1.0, 1.0]))
+        self.Q = Q  # the process noise covariance matrix.
+        self.R = R  # the measurement noise covariance matrix.
+
+        # define the transition n x n matrix.
+        self.A = np.matrix([
+            [1., 0., 1., 0.],
+            [0., 1., 0., 1.],
+            [0., 0., 1., 0.],
+            [0., 0., 0., 1.]
+        ])
+        self.H = np.matrix(np.eye(2, 4)) # measurement matrix.
 
     def predict(self):
-        raise NotImplementedError
+        self.state = np.dot(self.A, self.state)
+        self.covariance = np.dot(self.A, np.dot(self.covariance, self.A.T)) + self.Q
 
     def correct(self, meas_x, meas_y):
-        raise NotImplementedError
+
+        measurement = np.array([meas_x, meas_y]).reshape(2, 1)
+        diff = measurement - np.dot(self.H, self.state)
+        pred = np.dot(self.H, self.covariance)
+        predictive_mean = np.dot(pred, self.H.T) + self.R  # add the noise back in.
+
+        kg = np.dot(self.covariance, np.dot(self.H.T, np.linalg.inv(predictive_mean)))
+        self.state = self.state + kg * diff
+
+        # create an identity matrix to set the covariance.
+        id = np.eye(self.state.shape[0])
+        self.covariance = np.dot(id - np.dot(kg, self.H), self.covariance)
 
     def process(self, measurement_x, measurement_y):
 
