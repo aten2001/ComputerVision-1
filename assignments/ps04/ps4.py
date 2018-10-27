@@ -4,6 +4,8 @@ import numpy as np
 import cv2
 
 
+
+
 # Utility function
 def normalize_and_scale(image_in, scale_range=(0, 255)):
     """Normalizes and scales an image to a given range [0, 255].
