@@ -264,9 +264,9 @@ def part_3():
                    50: os.path.join(output_dir, 'ps5-3-a-2.png'),
                    160: os.path.join(output_dir, 'ps5-3-a-3.png')}
 
-    num_particles = 150  # Define the number of particles
-    sigma_mse = 5  # Define the value of sigma for the measurement exponential equation
-    sigma_dyn = 10  # Define the value of sigma for the particles movement (dynamics)
+    num_particles = 500  # Define the number of particles
+    sigma_mse = 6  # Define the value of sigma for the measurement exponential equation
+    sigma_dyn = 30  # Define the value of sigma for the particles movement (dynamics)
     alpha = 0.95  # Set a value for alpha
 
     run_particle_filter(ps5.AppearanceModelPF,  # particle filter model class
@@ -289,8 +289,8 @@ def part_4():
 
     num_particles = 250  # Define the number of particles
     sigma_md = 10  # Define the value of sigma for the measurement exponential equation
-    sigma_dyn = 3  # Define the value of sigma for the particles movement (dynamics)
-    alpha = 1
+    sigma_dyn = 4  # Define the value of sigma for the particles movement (dynamics)
+    alpha = 0.1
 
 
     run_particle_filter(ps5.MDParticleFilter,
@@ -300,7 +300,8 @@ def part_4():
                         num_particles=num_particles, sigma_exp=sigma_md,
                         sigma_dyn=sigma_dyn,
                         template_coords=template_rect,
-                        alpha=alpha)  # Add more if you need to
+                        alpha=alpha,
+                        scale = 0.995)  # Add more if you need to
 
 
 def part_5():
@@ -314,7 +315,117 @@ def part_5():
 
     Place all your work in this file and this section.
     """
-    raise NotImplementedError
+
+    save_frames = {29: os.path.join(output_dir, 'ps5-5-a-1.png'),
+                   56: os.path.join(output_dir, 'ps5-5-a-2.png'),
+                   71: os.path.join(output_dir, 'ps5-5-a-3.png')}
+
+    t1 = {
+        'x': 60,
+        'y': 200,
+        'w': 100,
+        'h': 100
+    }
+    t2 = {
+        'x': 414,
+        'y': 220,
+        'w': 100,
+        'h': 100
+    }
+    t3 = {
+        'x': 20,
+        'y': 172,
+        'w': 60,
+        'h': 150
+    }
+
+    kwargs1 = {
+        'num_particles': 400,
+        'sigma_exp': 5,
+        'sigma_dyn': 15,
+        'alpha': 0.05,
+    }
+
+    kwargs2 = {
+        'num_particles': 250,
+        'sigma_exp': 5,
+        'sigma_dyn': 10,
+        'alpha': 0.,
+    }
+
+    kwargs3 = {
+        'num_particles': 150,
+        'sigma_exp': 5,
+        'sigma_dyn': 15,
+        'alpha': 0.05,
+    }
+
+    imgs_dir = os.path.join(input_dir, "TUD-Campus")
+
+    imgs_list = [f for f in os.listdir(imgs_dir)
+                 if f[0] != '.' and f.endswith('.jpg')]
+    imgs_list = sorted(imgs_list)
+
+    # Initialize objects
+    templates = []
+    pf1 = None
+    pf2 = None
+    pf3 = None
+
+    frame_num = 1
+    for img in imgs_list:
+        frame = cv2.imread(os.path.join(os.path.join(input_dir, "TUD-Campus"), img))
+
+        # Extract template and initialize (one-time only)
+        if len(templates) < 1:
+            template1 = frame[int(t1['y']): int(t1['y'] + t1['h']), int(t1['x']): int(t1['x'] + t1['w'])]
+            template2 = frame[int(t2['y']):int(t2['y'] + t2['h']), int(t2['x']): int(t2['x'] + t2['w'])]
+            templates.append(template1)
+            templates.append(template2)
+            pf1 = ps5.AppearanceModelPF(frame, template=template1, template_coords=t1, **kwargs1)
+            pf2 = ps5.AppearanceModelPF(frame, template=template2, template_coords=t2, **kwargs2)
+
+        if frame_num == 32:
+            template3 = frame[int(t3['y']):int(t3['y'] + t3['h']), int(t3['x']): int(t3['x'] + t3['w'])]
+            templates.append(template3)
+            pf3 = ps5.AppearanceModelPF(frame, template=template3, template_coords=t3, **kwargs3)
+
+        # Process frame
+        pf1.process(frame)
+        if frame_num <= 29:
+            pf2.process(frame)
+        if frame_num >= 32:
+            pf3.process(frame)
+
+        if True:  # For debugging, it displays every frame
+            out_frame = frame.copy()
+            pf1.render(out_frame)
+            if frame_num <= 29:
+                pf2.render(out_frame)
+            if frame_num >= 32:
+                pf3.render(out_frame)
+            cv2.imshow('Tracking', out_frame)
+            cv2.waitKey(1)
+
+        # Render and save output, if indicated
+        if frame_num in save_frames:
+            frame_out = frame.copy()
+            pf1.render(frame_out)
+            if frame_num <= 29:
+                pf2.render(frame_out)
+            if frame_num >= 32:
+                pf3.render(frame_out)
+            cv2.imwrite(save_frames[frame_num], frame_out)
+
+        # if frame_num == 71:
+        #     frame_out = frame.copy()
+        #     pf1.render(frame_out)
+        #     pf2.render(frame_out)
+        #     pf3.render(frame_out)
+        #     cv2.imwrite(save_frames[frame_num], frame_out)
+
+        # Update frame number
+        frame_num += 1
 
 
 def part_6():
@@ -327,11 +438,11 @@ def part_6():
     raise NotImplementedError
 
 if __name__ == '__main__':
-    # part_1b()
-    # part_1c()
-    # part_2a()
-    # part_2b()
-    # part_3()
+    part_1b()
+    part_1c()
+    part_2a()
+    part_2b()
+    part_3()
     part_4()
-    # part_5()
+    part_5()
     # part_6()

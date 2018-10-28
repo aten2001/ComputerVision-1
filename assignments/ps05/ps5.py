@@ -345,8 +345,8 @@ class ParticleFilter(object):
                       thickness=1)
 
         # circle
-        dist = np.linalg.norm(self.particles - [x_weighted_mean, y_weighted_mean])
-        radius = np.sum(dist * self.weights.reshape((-1, 1))).astype(int)
+        dist = np.linalg.norm(self.particles - [x_weighted_mean, y_weighted_mean]) ** 0.5
+        radius = (np.sum(dist * self.weights.reshape((-1, 1)))).astype(int)
         cv2.circle(frame_in, (x_weighted_mean, y_weighted_mean), radius=radius, color=(128, 128, 128), thickness=1)
 
 
@@ -371,7 +371,7 @@ class AppearanceModelPF(ParticleFilter):
     def update_template(self, template):
         self.template = template.astype(np.uint8)
         self.th, self.tw = self.template.shape[0], self.template.shape[1]
-        self.distribute_particles()
+        # self.distribute_particles()
 
     def process(self, frame):
         """Processes a video frame (image) and updates the filter's state.
@@ -446,7 +446,7 @@ class MDParticleFilter(AppearanceModelPF):
         #
         # The way to do it is:
         # self.some_parameter_name = kwargs.get('parameter_name', default_value)
-        self.scale = 0.9
+        self.scale = kwargs.get('scale', 1)
         self.frames_processed = 0
         self.scale_divisor = 4
 
@@ -483,7 +483,7 @@ class MDParticleFilter(AppearanceModelPF):
         self.frames_processed += 1
         # determine if there is Occlusion
         current_avg = np.average(self.mean_errors)
-        print 'Current avg mse {}'.format(current_avg)
+        print 'Current avg mse {} on frame {}'.format(current_avg, self.frames_processed)
         if current_avg > self.max_mse:
             print 'high mse of {}'.format(current_avg)
             # there is too much error, we assume we want to keep last frames position.
@@ -498,8 +498,6 @@ class MDParticleFilter(AppearanceModelPF):
             particle = np.array([self.state_x, self.state_y])
             best_frame = self.get_template_around_particle(gray_fr, particle)
             temp_t = self.alpha * best_frame + (1 - self.alpha) * self.template
-
             resized_temp = image_resize(temp_t, width=None, height=int(self.th * self.scale))
-            # resized_temp = cv2.resize(self.template, None, fx=self.scale, fy=self.scale).astype(np.uint8)
-            self.scale = self.scale * 0.9
+            self.scale = self.scale * self.scale
             self.update_template(resized_temp)
