@@ -164,7 +164,28 @@ class Boosting:
 
     def train(self):
         """Implement the for loop shown in the problem set instructions."""
-        raise NotImplementedError
+
+        for i in range(self.num_iterations):
+            # re normalize the weights so they sum to 1.
+            self.weights /= np.sum(self.weights)
+            # instantiate the weak classifier h
+            h = WeakClassifier(X=self.Xtrain, y=self.ytrain, weights=self.weights)
+            h.train()
+            # get predictions for all the values in x training.
+            predictions = h.predict(np.transpose(self.Xtrain))
+
+            # find ej for weights
+            # sum weights where the prediction label does not equal the expected label.
+            ej = np.sum([self.weights[i] for i in range(len(predictions)) if predictions[i] != self.ytrain[i]])
+            # calculate alpha
+            alpha = 0.5 * np.log((1-ej) / ej)
+            self.weakClassifiers.append(h)
+            self.alphas.append(alpha)
+            if ej > self.eps:
+                # the weights are now going to be adjusted for error weights.
+                self.weights = [self.weights[i] * np.exp(-self.ytrain[i] * alpha * predictions[i]) for i in range(len(self.weights))]
+            else:  # stop the loop
+                return
 
     def evaluate(self):
         """Return the number of correct and incorrect predictions.
@@ -178,7 +199,17 @@ class Boosting:
                 correct (int): Number of correct predictions.
                 incorrect (int): Number of incorrect predictions.
         """
-        raise NotImplementedError
+        correct = 0
+        incorrect = 0
+        predictions = self.predict(self.Xtrain)
+
+        for p in range(len(predictions)):
+            if predictions[p] == self.ytrain[p]:
+                correct += 1
+            else:
+                incorrect += 1
+
+        return correct, incorrect
 
     def predict(self, X):
         """Return predictions for a given array of observations.
@@ -192,7 +223,21 @@ class Boosting:
         Returns:
             numpy.array: Predictions, one for each row in X.
         """
-        raise NotImplementedError
+        predictions = []
+
+        # for each weak classifier, get the list of predictions and store that in an overall array. We will
+        # need to have this so alpha can be applied after the predictions are made.
+        for i in range(len(self.weakClassifiers)):
+            p = [self.weakClassifiers[i].predict(np.transpose(X))]
+            predictions.append(p)
+
+        # apply alphas to the predictions that were made.
+        for i in range(len(self.alphas)):
+            predictions[i] = np.array(predictions[i]) * self.alphas[i]
+
+        # sum the predictions across all the weak classifiers.
+        predictions = np.sum(predictions, axis=0)[0]
+        return np.sign(predictions)
 
 
 class HaarFeature:

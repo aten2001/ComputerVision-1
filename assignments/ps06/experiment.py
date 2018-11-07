@@ -152,9 +152,13 @@ def part_2a():
 
     # Picking random numbers
     rand_y = np.random.choice([-1, 1], (len(ytrain)))
-    # TODO: find which of these labels match ytrain and report its accuracy
-    rand_accuracy = None
-    raise NotImplementedError
+    # the accuracy is the percent of correct answer. Loop over the lenght
+    correct = 0
+    for i in range(len(ytrain)):
+        if rand_y[i] == ytrain[i]:
+            correct += 1
+    # convert to a %
+    rand_accuracy = 100 * (float(correct) / float(len(ytrain)))
     print '(Random) Training accuracy: {0:.2f}%'.format(rand_accuracy)
 
     # Using Weak Classifier
@@ -162,9 +166,12 @@ def part_2a():
     wk_clf = ps6.WeakClassifier(Xtrain, ytrain, uniform_weights)
     wk_clf.train()
     wk_results = [wk_clf.predict(x) for x in Xtrain]
-    # TODO: find which of these labels match ytrain and report its accuracy
-    wk_accuracy = None
-    raise NotImplementedError
+    correct = 0
+    for i in range(len(ytrain)):
+        if wk_results[i] == ytrain[i]:
+            correct += 1
+    # convert to a %
+    wk_accuracy = 100 * (float(correct) / float(len(ytrain)))
     print '(Weak) Training accuracy {0:.2f}%'.format(wk_accuracy)
 
     num_iter = 5
@@ -177,22 +184,29 @@ def part_2a():
 
     # Picking random numbers
     rand_y = np.random.choice([-1, 1], (len(ytest)))
-    # TODO: find which of these labels match ytest and report its accuracy
-    rand_accuracy = None
-    raise NotImplementedError
+    correct = 0
+    for i in range(len(ytest)):
+        if rand_y[i] == ytest[i]:
+            correct += 1
+    rand_accuracy = 100 * (float(correct) / float(len(ytest)))
     print '(Random) Testing accuracy: {0:.2f}%'.format(rand_accuracy)
 
     # Using Weak Classifier
     wk_results = [wk_clf.predict(x) for x in Xtest]
-    # TODO: find which of these labels match ytest and report its accuracy
-    wk_accuracy = None
-    raise NotImplementedError
+    correct = 0
+    for i in range(len(ytest)):
+        if wk_results[i] == ytest[i]:
+            correct += 1
+    wk_accuracy = 100 * (float(correct) / float(len(ytest)))
     print '(Weak) Testing accuracy {0:.2f}%'.format(wk_accuracy)
 
     y_pred = boost.predict(Xtest)
     # TODO: find which of these labels match ytest and report its accuracy
-    boost_accuracy = None
-    raise NotImplementedError
+    correct = 0
+    for i in range(len(ytest)):
+        if y_pred[i] == ytest[i]:
+            correct += 1
+    boost_accuracy = 100 * (float(correct) / float(len(ytest)))
     print '(Boosting) Testing accuracy {0:.2f}%'.format(boost_accuracy)
 
 
@@ -258,13 +272,15 @@ def part_4_c():
 
     image = cv2.imread(os.path.join(INPUT_DIR, "man.jpeg"), -1)
     image = cv2.resize(image, (120, 60))
+
+    # todo: fix this shitty ass filename bug
     VJ.faceDetection(image, filename="ps4-4-c-1")
 
 
 if __name__ == "__main__":
-    part_1a_1b()
-    part_1c()
-    # part_2a()
+    # part_1a_1b()
+    # part_1c()
+    part_2a()
     # part_3a()
     # part_4_a_b()
     # part_4_c()
