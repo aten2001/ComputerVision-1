@@ -20,7 +20,7 @@ def load_images(folder, size=(32, 32)):
                              (row:observations, col:features) (float).
             y (numpy.array): 1D array of labels (int).
     """
-
+    size = tuple(size)
     images_files = [f for f in os.listdir(folder) if f.endswith(".png")]
     x = []
     y = []
@@ -65,7 +65,21 @@ def split_dataset(X, y, p):
             ytest (numpy.array): Test data labels.
     """
 
-    raise NotImplementedError
+    M = X.shape[0]  # the count of images.
+    training_sample_count = int(p * M)
+
+    idx = np.random.permutation(X.shape[0]) # get a random list of indices.
+
+    # training index will be from 0 to training sample count.
+    training_idx = idx[: training_sample_count]
+    # testing will be from count to end
+    testing_idx = idx[training_sample_count:]
+
+    Xtrain = X[training_idx, :]
+    ytrain = y[training_idx]
+    Xtest = X[testing_idx, :]
+    ytest = y[testing_idx]
+    return Xtrain, ytrain, Xtest, ytest
 
 
 def get_mean_face(x):
@@ -112,7 +126,6 @@ def pca(X, k):
     eigenvectors = eigenvectors[:, top_e_vectors]
     eigenvalues = eigenvalues[top_e_vectors]
     return eigenvectors, eigenvalues
-
 
 
 class Boosting:

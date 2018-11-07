@@ -263,7 +263,7 @@ def part_4_c():
 
 if __name__ == "__main__":
     part_1a_1b()
-    # part_1c()
+    part_1c()
     # part_2a()
     # part_3a()
     # part_4_a_b()
