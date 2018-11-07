@@ -22,8 +22,25 @@ def load_images(folder, size=(32, 32)):
     """
 
     images_files = [f for f in os.listdir(folder) if f.endswith(".png")]
+    x = []
+    y = []
+    for i in images_files:
+        img = cv2.imread(folder + '/' + i)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        # docs state that InterCubic is slower, but generally will look better. If performance
+        # becomes an issue, swap out.
+        img = cv2.resize(img, size, interpolation=cv2.INTER_CUBIC)  # resize to param size.
+        x.append(img.flatten())
+        # Label for the image.
+        # https://stackoverflow.com/questions/8143363/convert-string-into-integer
+        label = i.split('.')[0]
+        label = int(filter(str.isdigit, label))
+        y.append(label)
 
-    raise NotImplementedError
+    x = np.array(x)
+    y = np.array(y)
+
+    return x, y
 
 
 def split_dataset(X, y, p):
@@ -62,8 +79,7 @@ def get_mean_face(x):
     Returns:
         numpy.array: Mean face.
     """
-
-    raise NotImplementedError
+    return np.mean(x, axis=0, dtype=float)
 
 
 def pca(X, k):
@@ -83,8 +99,20 @@ def pca(X, k):
             eigenvectors (numpy.array): 2D array with the top k eigenvectors.
             eigenvalues (numpy.array): array with the top k eigenvalues.
     """
+    mean = get_mean_face(X)
+    # subtract the mean from the faces.
+    phi = X - mean
+    # the value right of the sigma in our assignment pdf.
+    u = np.dot(phi.T, phi)
+    eigenvalues, eigenvectors = np.linalg.eigh(u)
+    # sort
+    sorted_e_values = np.argsort(eigenvalues)
+    # get the top k vectors.
+    top_e_vectors = sorted_e_values[::-1][:k]
+    eigenvectors = eigenvectors[:, top_e_vectors]
+    eigenvalues = eigenvalues[top_e_vectors]
+    return eigenvectors, eigenvalues
 
-    raise NotImplementedError
 
 
 class Boosting:

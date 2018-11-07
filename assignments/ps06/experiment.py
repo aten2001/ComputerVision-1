@@ -64,7 +64,11 @@ def visualize_mean_face(x_mean, size, new_dims):
     Returns:
         numpy.array: Mean face uint8 2D array.
     """
-    return NotImplementedError
+    x_mean = x_mean.reshape(size)
+    # resize.
+    x_mean = cv2.resize(x_mean, new_dims, interpolation=cv2.INTER_CUBIC)
+    return x_mean
+
 
 
 def part_1a_1b():
@@ -259,8 +263,8 @@ def part_4_c():
 
 if __name__ == "__main__":
     part_1a_1b()
-    part_1c()
-    part_2a()
-    part_3a()
-    part_4_a_b()
-    part_4_c()
+    # part_1c()
+    # part_2a()
+    # part_3a()
+    # part_4_a_b()
+    # part_4_c()
