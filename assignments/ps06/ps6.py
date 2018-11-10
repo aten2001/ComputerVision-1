@@ -270,8 +270,14 @@ class HaarFeature:
         Returns:
             numpy.array: Image containing a Haar feature. (uint8).
         """
-
-        raise NotImplementedError
+        y, x = self.position
+        h, w = self.size
+        img = np.zeros(shape, dtype=np.uint8)
+        # area of addition is white (255)
+        img[y: y + int(h/2), x: x + w] = 255
+        # area of subtraction is gray (126)
+        img[y + int(h/2): y + h, x: x+ w] = 126
+        return img
 
     def _create_two_vertical_feature(self, shape):
         """Create a feature of type (1, 2).
@@ -284,8 +290,14 @@ class HaarFeature:
         Returns:
             numpy.array: Image containing a Haar feature. (uint8).
         """
-
-        raise NotImplementedError
+        y, x = self.position
+        h, w = self.size
+        img = np.zeros(shape, dtype=np.uint8)
+        # area of addition is white (255)
+        img[y: y + h, x: x + int(w/2)] = 255
+        # area of subtraction is gray (126)
+        img[y: y + h, x + int(w/2): x + w] = 126
+        return img
 
     def _create_three_horizontal_feature(self, shape):
         """Create a feature of type (3, 1).
@@ -298,8 +310,16 @@ class HaarFeature:
         Returns:
             numpy.array: Image containing a Haar feature. (uint8).
         """
-
-        raise NotImplementedError
+        y, x = self.position
+        h, w = self.size
+        img = np.zeros(shape, dtype=np.uint8)
+        # area of addition is white (255)
+        img[y: y + int(h / 3), x: x + w] = 255
+        # area of subtraction is gray ( 126)
+        img[y + int(h/3): y + (2 * int(h/3)), x: x + w] = 126
+        # area of addition is white (255)
+        img[y + (2 * int(h/3)): y + h, x: x + w] = 255
+        return img
 
     def _create_three_vertical_feature(self, shape):
         """Create a feature of type (1, 3).
@@ -312,8 +332,16 @@ class HaarFeature:
         Returns:
             numpy.array: Image containing a Haar feature. (uint8).
         """
-
-        raise NotImplementedError
+        y, x = self.position
+        h, w = self.size
+        img = np.zeros(shape, dtype=np.uint8)
+        # area of addition is white (255)
+        img[y: y + h, x: x + int(w/3)] = 255
+        # area of subtraction is gray ( 126)
+        img[y: y + h, x + int(w/3): x + (2 * int(w/3))] = 126
+        # area of addition is white (255)
+        img[y: y + h, x + (2 * int(w/3)): x + w] = 255
+        return img
 
     def _create_four_square_feature(self, shape):
         """Create a feature of type (2, 2).
@@ -326,8 +354,19 @@ class HaarFeature:
         Returns:
             numpy.array: Image containing a Haar feature. (uint8).
         """
+        y, x = self.position
+        h, w = self.size
+        img = np.zeros(shape, dtype=np.uint8)
+        # top left
+        img[y: y + int(h/2), x: x + int(w / 2)] = 126
+        # top right
+        img[y: y + int(h/2), x + int(w/2): x + w] = 255
 
-        raise NotImplementedError
+        # bottom left
+        img[y + int(h/2): y + h, x: x + int(w / 2)] = 255
+        # bottom right
+        img[y + int(h / 2): y + h, x + int(w/2): x + w] = 126
+        return img
 
     def preview(self, shape=(24, 24), filename=None):
         """Return an image with a Haar-like feature of a given type.
@@ -391,8 +430,9 @@ class HaarFeature:
         Returns:
             float: Score value.
         """
-
-        raise NotImplementedError
+        y, x = self.position
+        h, w = self.size
+        # convert the integral image to proper data type.
 
 
 def convert_images_to_integral_images(images):
@@ -405,7 +445,13 @@ def convert_images_to_integral_images(images):
         (list): List of integral images.
     """
 
-    raise NotImplementedError
+    ii = []
+    # loop over each image that is passed and cumulative sum
+    for i in images:
+        i = np.cumsum(i, axis=0)
+        i = np.cumsum(i, axis=1)
+        ii.append(i)
+    return ii
 
 
 class ViolaJones:
