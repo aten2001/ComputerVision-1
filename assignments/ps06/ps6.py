@@ -430,8 +430,12 @@ class HaarFeature:
         Returns:
             float: Score value.
         """
+
+        # cast to prevent issues related to the following output when running:
+        # RuntimeWarning: overflow encountered in ulong_scalars
+        ii = np.float64(ii)
         # init return value to 0
-        score = np.float64(0)
+        score = 0
 
         y, x = self.position
         h, w = self.size
@@ -447,28 +451,28 @@ class HaarFeature:
 
             # top
             a = ii[y, x]
-            b = ii[y + int(h/2), x]
+            b = ii[y + (h//2), x]
             c = ii[y, x + w]
-            d = ii[y + int(h/2) , x + w]
+            d = ii[y + (h//2), x + w]
             score += d - b - c + a
 
             # bottom
-            a = ii[y + int(h/2), x]
+            a = ii[y + (h//2), x]
             b = ii[y + h, x]
-            c = ii[y + int(h/2), x + w]
+            c = ii[y + (h//2), x + w]
             d = ii[y + h, x + w]
             score -= d - b - c + a
 
         elif self.feat_type == (1, 2):
 
-            a = ii[y , x ]
+            a = ii[y, x]
             b = ii[y + h, x]
-            c = ii[y, x + int(w / 2)]
-            d = ii[y + h, x + int(w / 2)]
+            c = ii[y, x + (w // 2)]
+            d = ii[y + h, x + (w // 2)]
             score += d - b - c + a
 
-            a = ii[y, x + int(w / 2)]
-            b = ii[y + h, x + int(w / 2)]
+            a = ii[y, x + (w // 2)]
+            b = ii[y + h, x + (w // 2)]
             c = ii[y, x + w]
             d = ii[y + h, x + w]
             score -= d - b - c + a
@@ -477,23 +481,23 @@ class HaarFeature:
 
             # White Region
             a = ii[y, x]
-            b = ii[y + int(h/3), x]
+            b = ii[y + (h//3), x]
             c = ii[y, x + w]
-            d = ii[y + int(h/3), x + w]
+            d = ii[y + (h//3), x + w]
             score += d - b - c + a
 
             # Gray Region
-            a = ii[y + int(h/3), x]
-            b = ii[y + (2 * int(h/3)), x]
-            c = ii[y + int(h/3), x + w]
-            d = ii[y + (2 * int(h/3)), x + w]
+            a = ii[y + (h//3), x]
+            b = ii[y + (2 * (h//3)), x]
+            c = ii[y + (h//3), x + w]
+            d = ii[y + (2 * (h//3)), x + w]
             score -= d - b - c + a
 
             # White Region
-            a = ii[y + (2 * int(h/3)), x]
-            b = ii[y + h , x]
-            c = ii[y + (2 * int(h/3)), x + w]
-            d = ii[y + h , x + w]
+            a = ii[y + (2 * (h//3)), x]
+            b = ii[y + h, x]
+            c = ii[y + (2 * (h//3)), x + w]
+            d = ii[y + h, x + w]
             score += d - b - c + a
 
         elif self.feat_type == (1, 3):
@@ -502,20 +506,20 @@ class HaarFeature:
             # White Region
             a = ii[y, x]
             b = ii[y + h, x]
-            c = ii[y, x + int(w / 3)]
-            d = ii[y + h, x + int(w / 3)]
+            c = ii[y, x + (w // 3)]
+            d = ii[y + h, x + (w // 3)]
             score += d - b - c + a
 
             # Gray Region
-            a = ii[y, x + int(w / 3)]
-            b = ii[y + h, x + int(w / 3)]
-            c = ii[y, x + (2 * int(w/3))]
-            d = ii[y + h, x + (2 * int(w/3))]
+            a = ii[y, x + (w // 3)]
+            b = ii[y + h, x + (w // 3)]
+            c = ii[y, x + (2 * (w//3))]
+            d = ii[y + h, x + (2 * (w//3))]
             score -= d - b - c + a
 
             # White Region
-            a = ii[y, x + (2 * int(w/3))]
-            b = ii[y + h, x + (2 * int(w/3))]
+            a = ii[y, x + (2 * (w//3))]
+            b = ii[y + h, x + (2 * (w//3))]
             c = ii[y, x + w]
             d = ii[y + h, x + w]
             score += d - b - c + a
@@ -523,26 +527,26 @@ class HaarFeature:
         else:
             # square
             a = ii[y, x]
-            b = ii[y + int(h/2), x]
-            c = ii[y, x + int(w / 2)]
-            d = ii[y + int(h/2), x + int(w / 2)]
+            b = ii[y + (h//2), x]
+            c = ii[y, x + (w // 2)]
+            d = ii[y + (h//2), x + (w // 2)]
             score -= d - b - c + a
 
-            a = ii[y, x + int(w / 2)]
-            b = ii[y + int(h/2), x + int(w / 2)]
+            a = ii[y, x + (w // 2)]
+            b = ii[y + (h//2), x + (w // 2)]
             c = ii[y, x + w]
-            d = ii[y + int(h/2), x + w]
+            d = ii[y + (h//2), x + w]
             score += d - b - c + a
 
-            a = ii[y + int(h/2), x]
+            a = ii[y + (h//2), x]
             b = ii[y + h, x]
-            c = ii[y + int(h/2), x + int(w / 2)]
-            d = ii[y + h, x + int(w / 2)]
+            c = ii[y + (h//2), x + (w // 2)]
+            d = ii[y + h, x + (w // 2)]
             score += d - b - c + a
 
-            a = ii[y + int(h/2), x + int(w / 2)]
-            b = ii[y + h, x + int(w / 2)]
-            c = ii[y + int(h/2), x + w]
+            a = ii[y + (h//2), x + (w // 2)]
+            b = ii[y + h, x + (w // 2)]
+            c = ii[y + (h//2), x + w]
             d = ii[y + h, x + w]
             score -= d - b - c + a
 
@@ -631,9 +635,29 @@ class ViolaJones:
         print " -- select classifiers --"
         for i in range(num_classifiers):
 
-            # TODO: Complete the Viola Jones algorithm
+            # normalize weights.
+            weights = weights / np.sum(weights)
+            # instantiate each classifier
+            classifier = VJ_Classifier(scores, self.labels, weights)
+            classifier.train()
+            error = classifier.error
+            # append
+            self.classifiers.append(classifier)
+            # update weights.
+            B = error / (1.0 - error)
+            a = np.log(1.0 / B)
 
-            raise NotImplementedError
+            # get predictions
+            preds = classifier.predict(np.transpose(scores))
+            # e = -1 if same, 1 if not.
+            e = [-1 if preds[i] == self.labels[i] else 1 for i in range(len(preds))]
+
+            for wti in range(len(weights)):
+                weights[wti] = weights[wti] * np.power(B, 1-e[wti])
+
+            # append the alpha.
+            self.alphas.append(a)
+
 
     def predict(self, images):
         """Return predictions for a given list of images.
@@ -660,14 +684,25 @@ class ViolaJones:
         # Add the score value to score[x, feature id] calling the feature's
         # evaluate function. 'x' is each image in 'ii'
 
+        for clf in self.classifiers:
+            feature_id = clf.feature
+            feature = self.haarFeatures[feature_id]
+            # for each image in the integral images.
+            for x in range(len(ii)):
+                scores[x, feature_id] = feature.evaluate(ii[x])
+
         result = []
 
         # Append the results for each row in 'scores'. This value is obtained
         # using the equation for the strong classifier H(x).
-
         for x in scores:
-            # TODO
-            raise NotImplementedError
+
+            lhs = np.sum([self.alphas[i] * self.classifiers[i].predict(x) for i in range(len(self.alphas))])
+            rhs = 0.5 * np.sum(self.alphas)
+            if lhs >= rhs:
+                result.append(1)
+            else:
+                result.append(-1)
 
         return result
 
@@ -686,5 +721,27 @@ class ViolaJones:
         Returns:
             None.
         """
+        img = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        images = []
+        windows = []
+        counter = 1
 
-        raise NotImplementedError
+        # for each row, starting at 12, step of 12
+        for y in range(12, image.shape[0], 12):
+            # for each column starting at 12, step of 12
+            for x in range(12, image.shape[1], 12):
+                img_slice = img[y-12: y + 12, x-12: x + 12]
+                windows.append((y, x))
+                images.append(img_slice)
+                # generate input image and save to directory.
+                cv2.imwrite('input_images/man/' + str(counter) + '.png', img_slice)
+                counter += 1
+
+        preds = self.predict(images)
+
+        for i in range(len(preds)):
+            if preds[i] == 1:
+                cv2.rectangle(image, (windows[i][1] - 12, windows[i][0] - 12), (windows[i][1] + 12, windows[i][0] + 12),
+                              (255, 0, 0), 1)
+
+        cv2.imwrite('output/' + filename + '.png', image)

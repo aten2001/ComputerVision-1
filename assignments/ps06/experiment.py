@@ -70,7 +70,6 @@ def visualize_mean_face(x_mean, size, new_dims):
     return x_mean
 
 
-
 def part_1a_1b():
 
     orig_size = (192, 231)
@@ -112,15 +111,11 @@ def part_1c():
     bad = 0
 
     for i, obs in enumerate(Xtest_proj):
-
         dist = [np.linalg.norm(obs - x) for x in Xtrain_proj]
-
         idx = np.argmin(dist)
         y_pred = ytrain[idx]
-
         if y_pred == ytest[i]:
             good += 1
-
         else:
             bad += 1
 
@@ -138,7 +133,7 @@ def part_2a():
     idx = y == y0
     idx |= y == y1
 
-    X = X[idx,:]
+    X = X[idx, :]
     y = y[idx]
 
     # Label them 1 and -1
@@ -174,6 +169,7 @@ def part_2a():
     wk_accuracy = 100 * (float(correct) / float(len(ytrain)))
     print '(Weak) Training accuracy {0:.2f}%'.format(wk_accuracy)
 
+
     num_iter = 5
 
     boost = ps6.Boosting(Xtrain, ytrain, num_iter)
@@ -199,6 +195,7 @@ def part_2a():
             correct += 1
     wk_accuracy = 100 * (float(correct) / float(len(ytest)))
     print '(Weak) Testing accuracy {0:.2f}%'.format(wk_accuracy)
+
 
     y_pred = boost.predict(Xtest)
     # TODO: find which of these labels match ytest and report its accuracy
@@ -230,7 +227,6 @@ def part_3a():
     feature5.preview((200, 200), filename='ps6-3-a-5.png')
 
 
-
 def part_4_a_b():
 
     pos = load_images_from_dir(POS_DIR)
@@ -245,14 +241,20 @@ def part_4_a_b():
     VJ = ps6.ViolaJones(train_pos, train_neg, integral_images)
     VJ.createHaarFeatures()
 
-    VJ.train(4)
+    VJ.train(5)
 
     VJ.haarFeatures[VJ.classifiers[0].feature].preview(filename="ps6-4-b-1")
     VJ.haarFeatures[VJ.classifiers[1].feature].preview(filename="ps6-4-b-2")
 
     predictions = VJ.predict(images)
     vj_accuracy = None
-    raise NotImplementedError
+
+    correct = 0.0
+    for i in range(len(labels)):
+        if predictions[i] == labels[i]:
+            correct += 1.0
+
+    vj_accuracy = (correct / len(labels)) * 100
     print "Prediction accuracy on training: {0:.2f}%".format(vj_accuracy)
 
     neg = load_images_from_dir(NEG2_DIR)
@@ -264,7 +266,12 @@ def part_4_a_b():
     predictions = VJ.predict(test_images)
 
     vj_accuracy = None
-    raise NotImplementedError
+    correct = 0.0
+    for i in range(len(real_labels)):
+        if predictions[i] == real_labels[i]:
+            correct += 1.0
+
+    vj_accuracy = (correct / len(real_labels)) * 100
     print "Prediction accuracy on testing: {0:.2f}%".format(vj_accuracy)
 
 
@@ -278,19 +285,17 @@ def part_4_c():
     VJ = ps6.ViolaJones(pos, neg, integral_images)
     VJ.createHaarFeatures()
 
-    VJ.train(4)
+    VJ.train(5)
 
     image = cv2.imread(os.path.join(INPUT_DIR, "man.jpeg"), -1)
     image = cv2.resize(image, (120, 60))
-
-    # todo: fix this shitty ass filename bug
     VJ.faceDetection(image, filename="ps4-4-c-1")
 
 
 if __name__ == "__main__":
-    # part_1a_1b()
-    # part_1c()
-    # part_2a()
+    part_1a_1b()
+    part_1c()
+    part_2a()
     part_3a()
-    # part_4_a_b()
-    # part_4_c()
+    part_4_a_b()
+    part_4_c()
