@@ -430,9 +430,123 @@ class HaarFeature:
         Returns:
             float: Score value.
         """
+        # init return value to 0
+        score = np.float64(0)
+
         y, x = self.position
         h, w = self.size
-        # convert the integral image to proper data type.
+
+        y = y - 1
+        x = x - 1
+        # keeping it in the bounds.
+        y = y if y >= 0 else 0
+        x = x if x >= 0 else 0
+
+        if self.feat_type == (2, 1):
+            # horizontal lines
+
+            # top
+            a = ii[y, x]
+            b = ii[y + int(h/2), x]
+            c = ii[y, x + w]
+            d = ii[y + int(h/2) , x + w]
+            score += d - b - c + a
+
+            # bottom
+            a = ii[y + int(h/2), x]
+            b = ii[y + h, x]
+            c = ii[y + int(h/2), x + w]
+            d = ii[y + h, x + w]
+            score -= d - b - c + a
+
+        elif self.feat_type == (1, 2):
+
+            a = ii[y , x ]
+            b = ii[y + h, x]
+            c = ii[y, x + int(w / 2)]
+            d = ii[y + h, x + int(w / 2)]
+            score += d - b - c + a
+
+            a = ii[y, x + int(w / 2)]
+            b = ii[y + h, x + int(w / 2)]
+            c = ii[y, x + w]
+            d = ii[y + h, x + w]
+            score -= d - b - c + a
+
+        elif self.feat_type == (3, 1):
+
+            # White Region
+            a = ii[y, x]
+            b = ii[y + int(h/3), x]
+            c = ii[y, x + w]
+            d = ii[y + int(h/3), x + w]
+            score += d - b - c + a
+
+            # Gray Region
+            a = ii[y + int(h/3), x]
+            b = ii[y + (2 * int(h/3)), x]
+            c = ii[y + int(h/3), x + w]
+            d = ii[y + (2 * int(h/3)), x + w]
+            score -= d - b - c + a
+
+            # White Region
+            a = ii[y + (2 * int(h/3)), x]
+            b = ii[y + h , x]
+            c = ii[y + (2 * int(h/3)), x + w]
+            d = ii[y + h , x + w]
+            score += d - b - c + a
+
+        elif self.feat_type == (1, 3):
+            # vertical lines
+
+            # White Region
+            a = ii[y, x]
+            b = ii[y + h, x]
+            c = ii[y, x + int(w / 3)]
+            d = ii[y + h, x + int(w / 3)]
+            score += d - b - c + a
+
+            # Gray Region
+            a = ii[y, x + int(w / 3)]
+            b = ii[y + h, x + int(w / 3)]
+            c = ii[y, x + (2 * int(w/3))]
+            d = ii[y + h, x + (2 * int(w/3))]
+            score -= d - b - c + a
+
+            # White Region
+            a = ii[y, x + (2 * int(w/3))]
+            b = ii[y + h, x + (2 * int(w/3))]
+            c = ii[y, x + w]
+            d = ii[y + h, x + w]
+            score += d - b - c + a
+
+        else:
+            # square
+            a = ii[y, x]
+            b = ii[y + int(h/2), x]
+            c = ii[y, x + int(w / 2)]
+            d = ii[y + int(h/2), x + int(w / 2)]
+            score -= d - b - c + a
+
+            a = ii[y, x + int(w / 2)]
+            b = ii[y + int(h/2), x + int(w / 2)]
+            c = ii[y, x + w]
+            d = ii[y + int(h/2), x + w]
+            score += d - b - c + a
+
+            a = ii[y + int(h/2), x]
+            b = ii[y + h, x]
+            c = ii[y + int(h/2), x + int(w / 2)]
+            d = ii[y + h, x + int(w / 2)]
+            score += d - b - c + a
+
+            a = ii[y + int(h/2), x + int(w / 2)]
+            b = ii[y + h, x + int(w / 2)]
+            c = ii[y + int(h/2), x + w]
+            d = ii[y + h, x + w]
+            score -= d - b - c + a
+
+        return score
 
 
 def convert_images_to_integral_images(images):
