@@ -438,11 +438,11 @@ def part_6():
     raise NotImplementedError
 
 if __name__ == '__main__':
-    part_1b()
-    part_1c()
-    part_2a()
-    part_2b()
+    # part_1b()
+    # part_1c()
+    # part_2a()
+    # part_2b()
     part_3()
-    part_4()
-    part_5()
+    # part_4()
+    # part_5()
     # part_6()

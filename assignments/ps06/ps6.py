@@ -721,27 +721,25 @@ class ViolaJones:
         Returns:
             None.
         """
+        ws = 24
         img = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         images = []
         windows = []
-        counter = 1
 
-        # for each row, starting at 12, step of 12
-        for y in range(12, image.shape[0], 12):
+        # for each row, starting at 12, step of 12. This is due to
+        for y in range(ws/2, image.shape[0], ws/2):
             # for each column starting at 12, step of 12
-            for x in range(12, image.shape[1], 12):
-                img_slice = img[y-12: y + 12, x-12: x + 12]
+            for x in range(ws/2, image.shape[1], ws/2):
+                img_slice = img[y-(ws/2): y + (ws/2), x-(ws/2): x + (ws/2)]
                 windows.append((y, x))
                 images.append(img_slice)
-                # generate input image and save to directory.
-                cv2.imwrite('input_images/man/' + str(counter) + '.png', img_slice)
-                counter += 1
 
         preds = self.predict(images)
 
         for i in range(len(preds)):
             if preds[i] == 1:
-                cv2.rectangle(image, (windows[i][1] - 12, windows[i][0] - 12), (windows[i][1] + 12, windows[i][0] + 12),
-                              (255, 0, 0), 1)
+                cv2.rectangle(image, (windows[i][1] - (ws/2), windows[i][0] - (ws/2)),
+                              (windows[i][1] + (ws/2), windows[i][0] + (ws/2)),
+                              (0, 0, 255), 1)
 
         cv2.imwrite('output/' + filename + '.png', image)

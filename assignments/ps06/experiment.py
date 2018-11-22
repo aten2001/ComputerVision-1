@@ -1,4 +1,6 @@
 """Problem Set 6: PCA, Boosting, Haar Features, Viola-Jones."""
+import time
+
 import cv2
 import os
 import numpy as np
@@ -94,6 +96,10 @@ def part_1c():
     p = 0.5  # Select a split percentage value
     k = 5  # Select a value for k
 
+    # testing values of k or comment this back in to see result set in a loop.
+    # p_range = np.arange(0.1, 1.0, 0.1)
+    # for j in p_range:
+
     size = [32, 32]
     X, y = ps6.load_images(YALE_FACES_DIR, size)
     Xtrain, ytrain, Xtest, ytest = ps6.split_dataset(X, y, p)
@@ -119,8 +125,28 @@ def part_1c():
         else:
             bad += 1
 
+    # Enable result comparsion to a random value selector.
+    random_guess = np.random.randint(low=1, high=16, size=len(ytest))
+    # random accuracy check.
+    rand_good = 0
+    rand_bad = 0
+    for i in range(len(random_guess)):
+        if random_guess[i] == ytest[i]:
+            rand_good += 1
+        else:
+            rand_bad += 1
+
+    print 'Results where P is {}'.format(p)
+    print '-------------------------------'
+    print 'Random Selection Results'
+    print 'Good predictions = ', rand_good, 'Bad predictions = ', rand_bad
+    print '(Random) Testing accuracy: {0:.2f}%'.format(100 * float(rand_good) / (rand_good + rand_bad))
+
+    print 'Normal Dist Results'
     print 'Good predictions = ', good, 'Bad predictions = ', bad
     print '{0:.2f}% accuracy'.format(100 * float(good) / (good + bad))
+    print '--------------------------------'
+    print ''
 
 
 def part_2a():
@@ -156,6 +182,15 @@ def part_2a():
     rand_accuracy = 100 * (float(correct) / float(len(ytrain)))
     print '(Random) Training accuracy: {0:.2f}%'.format(rand_accuracy)
 
+    # Picking random numbers
+    rand_y = np.random.choice([-1, 1], (len(ytest)))
+    correct = 0
+    for i in range(len(ytest)):
+        if rand_y[i] == ytest[i]:
+            correct += 1
+    rand_accuracy = 100 * (float(correct) / float(len(ytest)))
+    print '(Random) Testing accuracy: {0:.2f}%'.format(rand_accuracy)
+
     # Using Weak Classifier
     uniform_weights = np.ones((Xtrain.shape[0],)) / Xtrain.shape[0]
     wk_clf = ps6.WeakClassifier(Xtrain, ytrain, uniform_weights)
@@ -169,24 +204,6 @@ def part_2a():
     wk_accuracy = 100 * (float(correct) / float(len(ytrain)))
     print '(Weak) Training accuracy {0:.2f}%'.format(wk_accuracy)
 
-
-    num_iter = 5
-
-    boost = ps6.Boosting(Xtrain, ytrain, num_iter)
-    boost.train()
-    good, bad = boost.evaluate()
-    boost_accuracy = 100 * float(good) / (good + bad)
-    print '(Boosting) Training accuracy {0:.2f}%'.format(boost_accuracy)
-
-    # Picking random numbers
-    rand_y = np.random.choice([-1, 1], (len(ytest)))
-    correct = 0
-    for i in range(len(ytest)):
-        if rand_y[i] == ytest[i]:
-            correct += 1
-    rand_accuracy = 100 * (float(correct) / float(len(ytest)))
-    print '(Random) Testing accuracy: {0:.2f}%'.format(rand_accuracy)
-
     # Using Weak Classifier
     wk_results = [wk_clf.predict(x) for x in Xtest]
     correct = 0
@@ -196,9 +213,15 @@ def part_2a():
     wk_accuracy = 100 * (float(correct) / float(len(ytest)))
     print '(Weak) Testing accuracy {0:.2f}%'.format(wk_accuracy)
 
+    num_iter = 5
+    # for num_iter in range(1, 11):
+    boost = ps6.Boosting(Xtrain, ytrain, num_iter)
+    boost.train()
+    good, bad = boost.evaluate()
+    boost_accuracy = 100 * float(good) / (good + bad)
+    print '(Boosting) Training accuracy {0:.2f}%'.format(boost_accuracy)
 
     y_pred = boost.predict(Xtest)
-    # TODO: find which of these labels match ytest and report its accuracy
     correct = 0
     for i in range(len(ytest)):
         if y_pred[i] == ytest[i]:
